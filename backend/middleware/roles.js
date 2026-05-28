@@ -1,19 +1,15 @@
-const requireRole = (...allowedRoles) => {
+// requireRole accepts both styles:
+//   requireRole('admin', 'captain')
+//   requireRole(['admin', 'captain'])
+const requireRole = (...args) => {
+  const allowedRoles = args.flat();          // flatten one level so array arg also works
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ 
-        success: false,
-        message: 'User not authenticated' 
-      });
+      return res.status(401).json({ success: false, message: 'User not authenticated' });
     }
-
     if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({ 
-        success: false,
-        message: 'Insufficient permissions for this action' 
-      });
+      return res.status(403).json({ success: false, message: 'Insufficient permissions for this action' });
     }
-
     next();
   };
 };
@@ -21,30 +17,19 @@ const requireRole = (...allowedRoles) => {
 const checkRole = (requiredRoles) => {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ 
-        success: false,
-        message: 'User not authenticated' 
-      });
+      return res.status(401).json({ success: false, message: 'User not authenticated' });
     }
-
     const userRoles = Array.isArray(req.user.role) ? req.user.role : [req.user.role];
-    const hasRole = requiredRoles.some(role => userRoles.includes(role));
-
-    if (!hasRole) {
-      return res.status(403).json({ 
-        success: false,
-        message: 'Insufficient permissions for this action' 
-      });
+    if (!requiredRoles.some(r => userRoles.includes(r))) {
+      return res.status(403).json({ success: false, message: 'Insufficient permissions for this action' });
     }
-
     next();
   };
 };
 
-// Role checking helper
-const isAdmin = (user) => user && user.role === 'admin';
-const isSecretary = (user) => user && user.role === 'secretary';
-const isCaptain = (user) => user && user.role === 'captain';
-const isTreasurer = (user) => user && user.role === 'treasurer';
+const isAdmin     = (user) => user?.role === 'admin';
+const isSecretary = (user) => user?.role === 'secretary';
+const isCaptain   = (user) => user?.role === 'captain';
+const isTreasurer = (user) => user?.role === 'treasurer';
 
 module.exports = { requireRole, checkRole, isAdmin, isSecretary, isCaptain, isTreasurer };

@@ -1,456 +1,237 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { blotterAPI, residentsAPI } from '../api/apiClient';
-import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/Toast';
+import Modal from '../components/Modal';
+import Badge from '../components/Badge';
+import { AlertTriangle, Plus, Search, CheckCircle, XCircle, Pencil, Trash2 } from 'lucide-react';
+import ResidentSearch from '../components/ResidentSearch';
+
+const INCIDENT_TYPES = ['Physical Assault','Noise Complaint','Theft','Trespassing','Domestic Dispute',
+  'Property Damage','Verbal Abuse','Harassment','Illegal Dumping','Drug-Related','Other'];
 
 export default function BlotterManagement() {
-  const { hasRole } = useAuth();
+  const { toast } = useToast();
   const [records, setRecords] = useState([]);
   const [residents, setResidents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [editingRecord, setEditingRecord] = useState(null);
-  const [filters, setFilters] = useState({
-    status: '',
-    type: ''
+  const [modal, setModal] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [form, setForm] = useState({
+    complainant_id:'', respondent_id:'', incident_type:'', incident_date:'',
+    incident_time:'', incident_location:'', narrative:''
   });
-  
-  const [formData, setFormData] = useState({
-    complainant_id: '',
-    respondent_id: '',
-    incident_type: 'dispute',
-    incident_date: new Date().toISOString().split('T')[0],
-    incident_time: '',
-    incident_location: '',
-    narrative: '',
-    status: 'pending'
-  });
+  const [resolveModal, setResolveModal] = useState(null);
+  const [resolution, setResolution] = useState('');
 
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = {};
+      if (filterStatus) params.status = filterStatus;
+      const res = await blotterAPI.getAll(params);
+      let list = res.data.records || [];
+      if (search) list = list.filter(r =>
+        r.case_number?.includes(search) || r.incident_type?.toLowerCase().includes(search.toLowerCase()) ||
+        r.complainant_name?.toLowerCase().includes(search.toLowerCase()));
+      setRecords(list);
+    } catch { toast('Failed to load records', 'error'); }
+    finally { setLoading(false); }
+  }, [filterStatus, search]);
+
+  useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    fetchData();
+    residentsAPI.getAll(1, 500).then(r => setResidents(r.data.residents || [])).catch(() => {});
   }, []);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [blotterRes, residentsRes] = await Promise.all([
-        blotterAPI.getAll(),
-        residentsAPI.getAll(1, 1000)
-      ]);
-      
-      setRecords(blotterRes.data.records || []);
-      setResidents(residentsRes.data.residents || []);
-    } catch (err) {
-      setError('Failed to fetch data');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e) => {
+  async function handleSave(e) {
     e.preventDefault();
+    setSaving(true);
     try {
-      if (editingRecord) {
-        await blotterAPI.update(editingRecord.id, formData);
-      } else {
-        await blotterAPI.create(formData);
-      }
-      
-      setShowModal(false);
-      setEditingRecord(null);
-      resetForm();
-      fetchData();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Operation failed');
-    }
-  };
+      if (modal?.id) await blotterAPI.update(modal.id, form);
+      else await blotterAPI.create(form);
+      toast(modal?.id ? 'Record updated' : 'Blotter filed successfully', 'success');
+      setModal(null); load();
+    } catch { toast('Failed to save', 'error'); }
+    finally { setSaving(false); }
+  }
 
-  const resetForm = () => {
-    setFormData({
-      complainant_id: '',
-      respondent_id: '',
-      incident_type: 'dispute',
-      incident_date: new Date().toISOString().split('T')[0],
-      incident_time: '',
-      incident_location: '',
-      narrative: '',
-      status: 'pending'
-    });
-  };
+  async function handleResolve() {
+    try {
+      await blotterAPI.updateStatus(resolveModal, { status: 'resolved', resolution });
+      toast('Case resolved', 'success');
+      setResolveModal(null); setResolution(''); load();
+    } catch { toast('Failed to resolve', 'error'); }
+  }
 
-  const handleEdit = (record) => {
-    setEditingRecord(record);
-    setFormData({
+  async function updateStatus(id, status) {
+    try { await blotterAPI.updateStatus(id, { status }); toast(`Status updated to ${status}`, 'success'); load(); }
+    catch { toast('Failed to update status', 'error'); }
+  }
+
+  async function handleDelete(id) {
+    if (!confirm('Delete this blotter record?')) return;
+    try { await blotterAPI.delete(id); toast('Deleted', 'success'); load(); }
+    catch { toast('Delete failed', 'error'); }
+  }
+
+  const openForm = (record = null) => {
+    setForm(record ? {
       complainant_id: record.complainant_id || '',
       respondent_id: record.respondent_id || '',
-      incident_type: record.incident_type || 'dispute',
+      incident_type: record.incident_type || '',
       incident_date: record.incident_date?.split('T')[0] || '',
       incident_time: record.incident_time || '',
       incident_location: record.incident_location || '',
-      narrative: record.narrative || '',
-      status: record.status || 'pending'
-    });
-    setShowModal(true);
+      narrative: record.narrative || ''
+    } : { complainant_id:'', respondent_id:'', incident_type:'', incident_date:'', incident_time:'', incident_location:'', narrative:'' });
+    setModal(record || {});
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this record?')) return;
-    try {
-      await blotterAPI.delete(id);
-      fetchData();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Delete failed');
-    }
-  };
-
-  const handleUpdateStatus = async (id, status) => {
-    try {
-      await blotterAPI.updateStatus(id, status);
-      fetchData();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Status update failed');
-    }
-  };
-
-  const getStatusBadge = (status) => {
-    const colors = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      ongoing: 'bg-blue-100 text-blue-800',
-      resolved: 'bg-green-100 text-green-800',
-      dismissed: 'bg-gray-100 text-gray-800'
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
-
-  const getTypeBadge = (type) => {
-    const colors = {
-      dispute: 'bg-orange-100 text-orange-800',
-      assault: 'bg-red-100 text-red-800',
-      theft: 'bg-purple-100 text-purple-800',
-      noise_complaint: 'bg-blue-100 text-blue-800',
-      property_damage: 'bg-yellow-100 text-yellow-800',
-      other: 'bg-gray-100 text-gray-800'
-    };
-    return colors[type] || 'bg-gray-100 text-gray-800';
-  };
-
-  const incidentTypes = [
-    { value: 'dispute', label: 'Dispute' },
-    { value: 'assault', label: 'Assault' },
-    { value: 'theft', label: 'Theft' },
-    { value: 'noise_complaint', label: 'Noise Complaint' },
-    { value: 'property_damage', label: 'Property Damage' },
-    { value: 'domestic', label: 'Domestic Issue' },
-    { value: 'other', label: 'Other' }
-  ];
-
-  const statuses = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'ongoing', label: 'Ongoing' },
-    { value: 'resolved', label: 'Resolved' },
-    { value: 'dismissed', label: 'Dismissed' }
-  ];
-
-  // Filter records
-  const filteredRecords = records.filter(record => {
-    if (filters.status && record.status !== filters.status) return false;
-    if (filters.type && record.incident_type !== filters.type) return false;
-    return true;
-  });
-
-  // Stats
-  const stats = {
-    total: records.length,
-    pending: records.filter(r => r.status === 'pending').length,
-    ongoing: records.filter(r => r.status === 'ongoing').length,
-    resolved: records.filter(r => r.status === 'resolved').length
-  };
-
-  if (!hasRole(['admin', 'captain'])) {
-    return (
-      <div className="p-6">
-        <div className="bg-red-100 text-red-700 p-4 rounded-lg">
-          You do not have permission to access this page.
-        </div>
-      </div>
-    );
-  }
+  const statusCounts = records.reduce((a, r) => { a[r.status] = (a[r.status]||0)+1; return a; }, {});
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="max-w-7xl mx-auto space-y-5">
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Blotter Management</h1>
-          <p className="text-gray-600">Record and manage community incidents</p>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><AlertTriangle size={22} className="text-rose-600"/>Blotter Records</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{records.length} total cases</p>
         </div>
-        <button
-          onClick={() => {
-            setEditingRecord(null);
-            resetForm();
-            setShowModal(true);
-          }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
-        >
-          + New Blotter Entry
-        </button>
+        <button onClick={() => openForm()} className="btn-primary flex items-center gap-1.5"><Plus size={15}/>File Blotter</button>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-          {error}
-          <button onClick={() => setError('')} className="float-right">×</button>
-        </div>
-      )}
+      {/* Status pills */}
+      <div className="flex flex-wrap gap-2">
+        {[['','All',records.length],['pending','Pending',statusCounts.pending||0],
+          ['investigating','Investigating',statusCounts.investigating||0],
+          ['resolved','Resolved',statusCounts.resolved||0],['closed','Closed',statusCounts.closed||0]
+        ].map(([v,l,n]) => (
+          <button key={v} onClick={() => setFilterStatus(v)}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition
+              ${filterStatus===v ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'}`}>
+            {l} <span className="opacity-70">{n}</span>
+          </button>
+        ))}
+      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
-          <p className="text-gray-600 text-sm">Total Cases</p>
-          <p className="text-2xl font-bold">{stats.total}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-yellow-500">
-          <p className="text-gray-600 text-sm">Pending</p>
-          <p className="text-2xl font-bold">{stats.pending}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
-          <p className="text-gray-600 text-sm">Ongoing</p>
-          <p className="text-2xl font-bold">{stats.ongoing}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
-          <p className="text-gray-600 text-sm">Resolved</p>
-          <p className="text-2xl font-bold">{stats.resolved}</p>
+      {/* Search */}
+      <div className="card p-4">
+        <div className="relative">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by case number, incident type, or complainant..."
+            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-gray-50"/>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            >
-              <option value="">All Statuses</option>
-              {statuses.map(s => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
+      {/* Table */}
+      <div className="card overflow-hidden">
+        {loading ? (
+          <div className="p-6 space-y-3">{[...Array(5)].map((_,i)=><div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse"/>)}</div>
+        ) : records.length === 0 ? (
+          <div className="py-14 text-center text-gray-400">
+            <AlertTriangle size={36} className="mx-auto mb-2 text-gray-200"/>
+            <p className="font-medium">No blotter records</p>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Type</label>
-            <select
-              value={filters.type}
-              onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            >
-              <option value="">All Types</option>
-              {incidentTypes.map(t => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-end">
-            <button
-              onClick={() => setFilters({ status: '', type: '' })}
-              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition"
-            >
-              Clear Filters
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="text-center py-12">Loading...</div>
-      ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Case No.</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date/Time</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Complainant</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Respondent</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredRecords.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-gray-500">No blotter records found</td>
+        ) : (
+          <table className="w-full text-sm">
+            <thead><tr className="bg-gray-50 border-b border-gray-100">
+              {['Case #','Type','Complainant','Respondent','Date','Location','Status','Actions'].map(h=><th key={h} className="table-th">{h}</th>)}
+            </tr></thead>
+            <tbody className="divide-y divide-gray-50">
+              {records.map(r => (
+                <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="table-td font-mono text-xs text-indigo-700 font-semibold">{r.case_number}</td>
+                  <td className="table-td text-gray-700 font-medium">{r.incident_type}</td>
+                  <td className="table-td text-gray-600">{r.complainant_name || '—'}</td>
+                  <td className="table-td text-gray-600">{r.respondent_name || '—'}</td>
+                  <td className="table-td text-gray-500 whitespace-nowrap">{r.incident_date ? new Date(r.incident_date).toLocaleDateString('en-PH') : '—'}</td>
+                  <td className="table-td text-gray-500 max-w-xs truncate">{r.incident_location || '—'}</td>
+                  <td className="table-td"><Badge status={r.status}/></td>
+                  <td className="table-td">
+                    <div className="flex gap-1 flex-wrap">
+                      <button onClick={() => openForm(r)} className="icon-btn text-gray-400 hover:text-amber-600" title="Edit"><Pencil size={14}/></button>
+                      {r.status === 'pending' && <button onClick={() => updateStatus(r.id,'investigating')} className="icon-btn text-gray-400 hover:text-blue-600 text-[10px] font-semibold px-1.5">Investigate</button>}
+                      {r.status === 'investigating' && <button onClick={() => { setResolveModal(r.id); }} className="icon-btn text-gray-400 hover:text-emerald-600" title="Resolve"><CheckCircle size={14}/></button>}
+                      {r.status === 'resolved' && <button onClick={() => updateStatus(r.id,'closed')} className="icon-btn text-gray-400 hover:text-gray-600" title="Close"><XCircle size={14}/></button>}
+                      <button onClick={() => handleDelete(r.id)} className="icon-btn text-gray-400 hover:text-rose-600" title="Delete"><Trash2 size={14}/></button>
+                    </div>
+                  </td>
                 </tr>
-              ) : (
-                filteredRecords.map((record) => (
-                  <tr key={record.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {record.case_number || `BLT-${record.id}`}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div>{new Date(record.incident_date).toLocaleDateString()}</div>
-                      <div className="text-xs">{record.incident_time}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getTypeBadge(record.incident_type)}`}>
-                        {record.incident_type?.replace('_', ' ').toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {record.complainant_name || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {record.respondent_name || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(record.status)}`}>
-                        {record.status?.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button onClick={() => handleEdit(record)} className="text-blue-600 hover:text-blue-900">Edit</button>
-                      {record.status === 'pending' && (
-                        <button onClick={() => handleUpdateStatus(record.id, 'ongoing')} className="text-yellow-600 hover:text-yellow-900">Start</button>
-                      )}
-                      {record.status === 'ongoing' && (
-                        <button onClick={() => handleUpdateStatus(record.id, 'resolved')} className="text-green-600 hover:text-green-900">Resolve</button>
-                      )}
-                      <button onClick={() => handleDelete(record.id)} className="text-red-600 hover:text-red-900">Delete</button>
-                    </td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Add/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto py-8">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4">
-            <h2 className="text-xl font-bold mb-4">{editingRecord ? 'Edit Blotter Entry' : 'New Blotter Entry'}</h2>
-            <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
-              {/* Parties */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Complainant</label>
-                  <select
-                    value={formData.complainant_id}
-                    onChange={(e) => setFormData({ ...formData, complainant_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select Complainant</option>
-                    {residents.map((r) => (
-                      <option key={r.id} value={r.id}>{r.first_name} {r.last_name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Respondent</label>
-                  <select
-                    value={formData.respondent_id}
-                    onChange={(e) => setFormData({ ...formData, respondent_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select Respondent (Optional)</option>
-                    {residents.map((r) => (
-                      <option key={r.id} value={r.id}>{r.first_name} {r.last_name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+      {/* File / Edit Modal */}
+      <Modal open={!!modal} onClose={() => setModal(null)} title={modal?.id ? `Edit Case ${modal.case_number}` : 'File New Blotter Record'} size="lg">
+        <form onSubmit={handleSave} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <ResidentSearch
+                label="Complainant"
+                residents={residents}
+                value={form.complainant_id}
+                onChange={v => setForm(p => ({ ...p, complainant_id: v }))}
+                placeholder="Search complainant…"
+              />
+            </div>
+            <div>
+              <ResidentSearch
+                label="Respondent"
+                residents={residents}
+                value={form.respondent_id}
+                onChange={v => setForm(p => ({ ...p, respondent_id: v }))}
+                placeholder="Search respondent…"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="label">Incident Type *</label>
+            <select className="input" value={form.incident_type} onChange={e => setForm(p=>({...p,incident_type:e.target.value}))} required>
+              <option value="">Select type...</option>
+              {INCIDENT_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="label">Date</label>
+              <input type="date" className="input" value={form.incident_date} onChange={e => setForm(p=>({...p,incident_date:e.target.value}))}/>
+            </div>
+            <div>
+              <label className="label">Time</label>
+              <input type="time" className="input" value={form.incident_time} onChange={e => setForm(p=>({...p,incident_time:e.target.value}))}/>
+            </div>
+            <div>
+              <label className="label">Location</label>
+              <input className="input" value={form.incident_location} onChange={e => setForm(p=>({...p,incident_location:e.target.value}))} placeholder="Purok / Street"/>
+            </div>
+          </div>
+          <div>
+            <label className="label">Narrative *</label>
+            <textarea className="input resize-none" rows={4} value={form.narrative} onChange={e => setForm(p=>({...p,narrative:e.target.value}))} placeholder="Describe what happened..." required/>
+          </div>
+          <div className="flex gap-2 justify-end pt-1">
+            <button type="button" onClick={() => setModal(null)} className="btn-secondary">Cancel</button>
+            <button type="submit" disabled={saving} className="btn-primary">{saving ? 'Saving...' : 'File Record'}</button>
+          </div>
+        </form>
+      </Modal>
 
-              {/* Incident Details */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Incident Type *</label>
-                  <select
-                    value={formData.incident_type}
-                    onChange={(e) => setFormData({ ...formData, incident_type: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    {incidentTypes.map(t => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Incident Date *</label>
-                  <input
-                    type="date"
-                    value={formData.incident_date}
-                    onChange={(e) => setFormData({ ...formData, incident_date: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Incident Time</label>
-                  <input
-                    type="time"
-                    value={formData.incident_time}
-                    onChange={(e) => setFormData({ ...formData, incident_time: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Incident Location *</label>
-                <input
-                  type="text"
-                  value={formData.incident_location}
-                  onChange={(e) => setFormData({ ...formData, incident_location: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Where did the incident occur?"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Narrative *</label>
-                <textarea
-                  value={formData.narrative}
-                  onChange={(e) => setFormData({ ...formData, narrative: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  rows="4"
-                  placeholder="Describe what happened..."
-                  required
-                />
-              </div>
-
-              {editingRecord && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  >
-                    {statuses.map(s => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                  Cancel
-                </button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                  {editingRecord ? 'Update' : 'Create'}
-                </button>
-              </div>
-            </form>
+      {/* Resolve Modal */}
+      <Modal open={!!resolveModal} onClose={() => setResolveModal(null)} title="Resolve Case" size="sm">
+        <div className="space-y-4">
+          <div>
+            <label className="label">Resolution Notes *</label>
+            <textarea className="input resize-none" rows={4} value={resolution} onChange={e => setResolution(e.target.value)} placeholder="Describe how the case was resolved..." required/>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setResolveModal(null)} className="btn-secondary">Cancel</button>
+            <button onClick={handleResolve} disabled={!resolution.trim()} className="btn-primary">Mark as Resolved</button>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

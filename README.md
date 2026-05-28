@@ -1,50 +1,88 @@
-# Barangay Management System
+# Barangay Narra Management System v2
 
-A full-stack barangay management platform built for lightweight ARM hardware such as the Orange Pi Zero 3.
+A full-stack barangay management information system built with **React + Node.js + PostgreSQL**.
 
-## Stack
-- Frontend: React + Vite + Tailwind CSS
-- Backend: Node.js + Express.js
-- Database: PostgreSQL
-- Authentication: JWT
-- Deployment: PM2 + Nginx
+## Features
 
-## Folder Structure
-- `backend/` - Express backend server and local upload/backup utilities
-- `frontend/` - React application
-- `db/` - PostgreSQL initialization scripts
-- `nginx/` - example Nginx reverse proxy config
-- `pm2/` - PM2 startup configuration
-- `docs/` - deployment, API docs, architecture guides
+- **Resident Management** — CRUD, CSV export, senior/voter filters
+- **Certificate Generation** — Barangay Clearance, Indigency, Residency, Business Permit
+- **Service Requests** — full workflow: pending → approved → processing → completed
+- **Blotter Records** — incident filing, investigation tracking, resolution
+- **Finance** — income/expense tracking, CSV export, balance dashboard
+- **Announcements** — post notifications that pop up for all logged-in users
+- **Document Management** — file uploads linked to residents
+- **User Management** — role-based access (Admin, Secretary, Captain, Treasurer)
+- **Dark Mode** — full system-wide dark theme toggle per user
+- **Settings** — logo upload, background image, login page customization
 
-## Quickstart
-1. Install dependencies in `backend/` and `frontend/`.
-2. Create PostgreSQL database and run `/db/init.sql`.
-3. Configure `.env` in `backend/`.
-4. Start backend with PM2 and optionally build frontend.
+## Tech Stack
 
-## Deployment Documentation
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, Vite, Tailwind CSS, Recharts, Lucide Icons |
+| Backend | Node.js, Express.js |
+| Database | PostgreSQL |
+| Auth | JWT (jsonwebtoken + bcryptjs) |
 
-Start with these guides in order:
+## Quick Start
 
-1. **[GitHub Deployment Guide](docs/GITHUB_DEPLOYMENT.md)** ← **START HERE**
-   - Complete step-by-step instructions to deploy from GitHub
-   - Covers all prerequisites, setup, and configuration
+### Prerequisites
+- Node.js 18+
+- PostgreSQL 14+
 
-2. **[Deployment Checklist](docs/DEPLOYMENT_CHECKLIST.md)**
-   - Use this to verify everything is set up correctly
-   - Pre-deployment, initial, and post-deployment checks
+### 1. Clone and install
+\\ash
+git clone https://github.com/YOUR_USERNAME/barangay-narra-v2.git
+cd barangay-narra-v2
+npm install
+cd backend && npm install
+cd ../frontend && npm install
+\
+### 2. Configure environment
+\\ash
+cp backend/.env.example backend/.env
+# Edit backend/.env with your PostgreSQL credentials
+\
+### 3. Set up the database
+\\ash
+cd backend
+node scripts/setup-db.js
+\
+### 4. Start development servers
+\\ash
+# Terminal 1 — Backend
+cd backend && npm run dev
 
-3. **[GitHub Deployment Quick Reference](docs/GITHUB_DEPLOYMENT_QUICK_REFERENCE.md)**
-   - Quick commands for common tasks
-   - Bookmarking this is recommended
+# Terminal 2 — Frontend
+cd frontend && npm run dev -- --host 0.0.0.0
+\
+## Default Login
 
-4. **[GitHub Actions Setup](docs/GITHUB_ACTIONS_SETUP.md)** (Optional)
-   - Automate deployments on every GitHub push
-   - CI/CD pipeline configuration
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | admin@barangay.gov.ph | Admin@2024 |
+| Secretary | secretary@barangay.gov.ph | Secretary@2024 |
+| Captain | captain@barangay.gov.ph | Captain@2024 |
+| Treasurer | treasurer@barangay.gov.ph | Treasurer@2024 |
 
-### Other Documentation
+## Project Structure
 
-- **[Full Deployment Guide](docs/DEPLOYMENT.md)** - Original Orange Pi Zero 3 deployment guide
-- **[API Routes](docs/API_ROUTES.md)** - Available API endpoints
-- **[Architecture](docs/ARCHITECTURE.md)** - System architecture overview
+\barangay-system/
+├── backend/           # Express API
+│   ├── controllers/   # Business logic
+│   ├── routes/        # API endpoints
+│   ├── middleware/    # Auth, roles, error handling
+│   ├── services/      # Audit logging
+│   ├── scripts/       # DB setup & seeding
+│   └── uploads/       # File storage (gitignored)
+├── frontend/          # React app
+│   └── src/
+│       ├── components/ # Shared UI components
+│       ├── contexts/   # Auth, Theme contexts
+│       ├── layouts/    # AdminLayout
+│       └── pages/      # Feature pages
+└── db/
+    └── init.sql       # PostgreSQL schema
+\
+## License
+MIT

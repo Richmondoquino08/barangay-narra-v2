@@ -1,19 +1,49 @@
+# ── Node ─────────────────────────────────────────────────────────
 node_modules/
 backend/node_modules/
 frontend/node_modules/
+.npm/
+npm-debug.log*
+
+# ── Build output ─────────────────────────────────────────────────
 frontend/dist/
-.DS_Store
+frontend/build/
+
+# ── Environment / secrets — NEVER commit ─────────────────────────
 .env
+.env.local
+.env.*.local
 backend/.env
 frontend/.env
+
+# ── Uploaded runtime files ────────────────────────────────────────
+backend/uploads/profiles/*
+backend/uploads/documents/*
+backend/uploads/certificates/*
+backend/uploads/settings/*
+backend/uploads/templates/*
+!backend/uploads/**/.gitkeep
+
+# ── Logs ─────────────────────────────────────────────────────────
 *.log
-backups/
-uploads/
-.pm2/
-.claude/
-.vscode-server/
-.ssh/
-.bash_history
-.node_repl_history
-.psql_history
 logs/
+
+# ── PM2 / process manager ────────────────────────────────────────
+.pm2/
+
+# ── OS / Editor ──────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+.vscode-server/
+
+# ── Temp setup scripts (not part of source) ───────────────────────
+backend/scripts/migrate.js
+backend/scripts/migrate2.js
+/tmp/
+
+# ── Backups ───────────────────────────────────────────────────────
+backups/

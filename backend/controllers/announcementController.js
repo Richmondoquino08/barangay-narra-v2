@@ -13,12 +13,15 @@ async function getAnnouncements(req, res, next) {
 async function createAnnouncement(req, res, next) {
   try {
     const { title, message } = req.body;
+    if (!title || !message) {
+      return res.status(400).json({ error: 'Title and message are required' });
+    }
     const [result] = await db.query(
       'INSERT INTO announcements (title, message, posted_by) VALUES (?, ?, ?)',
       [title, message, req.user.id]
     );
-    await auditService.logAction(req.user.id, 'create_announcement', `Posted announcement ${title}`);
-    res.status(201).json({ 
+    await auditService.logAction(req.user.id, 'create_announcement', `Posted announcement: ${title}`);
+    res.status(201).json({
       message: 'Announcement created',
       announcement: { id: result.insertId, title, message }
     });
@@ -31,12 +34,12 @@ async function updateAnnouncement(req, res, next) {
   try {
     const { id } = req.params;
     const { title, message } = req.body;
-    
+
     const [existing] = await db.query('SELECT id FROM announcements WHERE id = ?', [id]);
     if (!existing[0]) {
       return res.status(404).json({ error: 'Announcement not found' });
     }
-    
+
     await db.query(
       'UPDATE announcements SET title = ?, message = ?, updated_at = NOW() WHERE id = ?',
       [title, message, id]
@@ -55,7 +58,7 @@ async function deleteAnnouncement(req, res, next) {
     if (!existing[0]) {
       return res.status(404).json({ error: 'Announcement not found' });
     }
-    
+
     await db.query('DELETE FROM announcements WHERE id = ?', [id]);
     await auditService.logAction(req.user.id, 'delete_announcement', `Deleted announcement ${id}`);
     res.json({ message: 'Announcement deleted' });

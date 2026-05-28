@@ -7,12 +7,17 @@ const announcementController = require('../controllers/announcementController');
 const router = express.Router();
 router.use(requireAuth);
 
-router.get('/', requireRole('admin', 'treasurer', 'secretary', 'captain'), announcementController.getAnnouncements);
+// Everyone can read
+router.get('/', announcementController.getAnnouncements);
+
+// Admin, secretary, captain can create / update / delete
+const canManage = requireRole('admin', 'secretary', 'captain');
+
 router.post(
   '/',
-  requireRole('admin', 'secretary'),
-  body('title').notEmpty(),
-  body('message').notEmpty(),
+  canManage,
+  body('title').notEmpty().withMessage('Title is required'),
+  body('message').notEmpty().withMessage('Message is required'),
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
@@ -20,9 +25,8 @@ router.post(
   },
   announcementController.createAnnouncement
 );
-router.put('/:id', requireRole('admin', 'secretary'), announcementController.updateAnnouncement);
-router.delete('/:id', requireRole('admin', 'secretary'), announcementController.deleteAnnouncement);
 
-module.exports = router;
+router.put('/:id',    canManage, announcementController.updateAnnouncement);
+router.delete('/:id', canManage, announcementController.deleteAnnouncement);
 
 module.exports = router;

@@ -2,14 +2,133 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: light;
-}
+/* ── Base ─────────────────────────────────────────────────────────── */
+:root { color-scheme: light; }
+html  { @apply transition-colors duration-200; }
 
 body {
+  font-family: 'Inter', system-ui, sans-serif;
   @apply bg-slate-50 text-slate-900 antialiased;
+  @apply dark:bg-[#0f1117] dark:text-slate-100;
 }
 
-button, input, textarea {
-  font-family: inherit;
+/* ── Dark mode fine-tuned palette ──────────────────────────────────
+   --dm-surface   : main card / panel background
+   --dm-surface2  : slightly elevated (nested cards, dropdowns)
+   --dm-border    : subtle separator
+   --dm-muted     : placeholder / secondary text
+──────────────────────────────────────────────────────────────────── */
+.dark {
+  --dm-surface : #1a1d27;
+  --dm-surface2: #22263a;
+  --dm-border  : #2e334a;
+  --dm-muted   : #8892b0;
 }
+
+button, input, textarea, select { font-family: inherit; }
+
+/* Tell the browser to render native widgets (select, scrollbar, etc.) in dark mode */
+.dark input, .dark select, .dark textarea { color-scheme: dark; }
+
+/* ── Global dark-mode text remap ──────────────────────────────────
+   Re-maps all text-gray-* classes to readable slate equivalents so
+   EVERY page automatically has legible text — no per-file changes needed.
+──────────────────────────────────────────────────────────────────── */
+.dark .text-gray-950, .dark .text-gray-900 { color: #f1f5f9; } /* slate-100 */
+.dark .text-gray-800                        { color: #e2e8f0; } /* slate-200 */
+.dark .text-gray-700                        { color: #cbd5e1; } /* slate-300 */
+.dark .text-gray-600                        { color: #94a3b8; } /* slate-400 */
+.dark .text-gray-500                        { color: #64748b; } /* slate-500 */
+.dark .text-gray-400                        { color: #475569; } /* slate-600 */
+
+/* Dark-mode background cards (bg-white → surface) */
+.dark .bg-white           { background: var(--dm-surface); }
+.dark .bg-gray-50         { background: var(--dm-surface2); }
+.dark .bg-gray-100        { background: #22263a; }
+
+/* Dark-mode borders */
+.dark .border-gray-100,
+.dark .border-gray-200    { border-color: var(--dm-border); }
+.dark .divide-gray-100,
+.dark .divide-gray-200,
+.dark .divide-gray-50     { --tw-divide-opacity: 1; border-color: var(--dm-border); }
+
+/* Table rows */
+.dark .hover\:bg-gray-50:hover  { background: var(--dm-surface2); }
+.dark thead tr                   { background: #1e2233; }
+.dark tbody tr + tr              { border-top-color: var(--dm-border); }
+
+/* ── Scrollbar ────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { @apply bg-slate-300 dark:bg-slate-600 rounded-full; }
+
+/* ─────────────────────────────────────────────────────────────────── */
+@layer components {
+
+  /* ── Inputs ───────────────────────────────────────────────────── */
+  .input {
+    @apply w-full border rounded-xl px-3 py-2 text-sm transition
+           bg-white text-gray-900 border-gray-200 placeholder-gray-300
+           focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent;
+  }
+  .dark .input {
+    background: var(--dm-surface2);
+    color: #e2e8f0;
+    border-color: var(--dm-border);
+  }
+  .dark .input::placeholder { color: var(--dm-muted); }
+  .dark .input:focus { border-color: #6366f1; }
+
+  .label {
+    @apply block text-sm font-medium mb-1;
+    @apply text-gray-700 dark:text-slate-300;
+  }
+
+  /* ── Buttons ─────────────────────────────────────────────────── */
+  .btn-primary {
+    @apply bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800
+           text-white px-4 py-2 rounded-xl text-sm font-semibold
+           transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply px-4 py-2 rounded-xl text-sm font-medium transition shadow-sm
+           bg-white hover:bg-gray-50 text-gray-700 border border-gray-200
+           dark:bg-[#1a1d27] dark:hover:bg-[#22263a] dark:text-slate-200 dark:border-[#2e334a];
+  }
+  .btn-danger {
+    @apply bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition;
+  }
+  .icon-btn {
+    @apply p-1.5 rounded-lg transition
+           hover:bg-gray-100 dark:hover:bg-[#22263a];
+  }
+
+  /* ── Cards ───────────────────────────────────────────────────── */
+  .card {
+    @apply rounded-2xl shadow-sm;
+    @apply bg-white border border-gray-100;
+    @apply dark:border-[#2e334a];
+  }
+  .dark .card { background: var(--dm-surface); }
+
+  /* ── Page layout helpers ─────────────────────────────────────── */
+  .page-header {
+    @apply flex flex-wrap gap-3 items-start justify-between mb-5;
+  }
+  .table-th {
+    @apply text-left text-xs font-semibold uppercase tracking-wide px-4 py-3;
+    @apply text-gray-500 dark:text-slate-400;
+  }
+  .table-td {
+    @apply px-4 py-3 text-sm;
+    @apply text-gray-700 dark:text-slate-300;
+  }
+  .table-row-hover {
+    @apply hover:bg-slate-50 dark:hover:bg-[#22263a] transition-colors;
+  }
+}
+
+/* ── Table zebra rows ────────────────────────────────────────────── */
+.dark table tbody tr { border-color: var(--dm-border); }
+.dark thead tr       { background: #1e2233; border-bottom-color: var(--dm-border); }

@@ -1,393 +1,226 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { financeAPI } from '../api/apiClient';
-import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/Toast';
+import Modal from '../components/Modal';
+import Badge from '../components/Badge';
+import StatCard from '../components/StatCard';
+import { DollarSign, TrendingUp, TrendingDown, Plus, Download, Pencil, Trash2, Filter } from 'lucide-react';
 
-export default function Finance() {
-  const { hasRole } = useAuth();
-  const [records, setRecords] = useState([]);
-  const [stats, setStats] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [editingRecord, setEditingRecord] = useState(null);
-  const [filters, setFilters] = useState({
-    type: '',
-    category: '',
-    startDate: '',
-    endDate: ''
+const CATEGORIES_INCOME  = ['Tax Collection', 'Permits & Licenses', 'Fines & Penalties', 'Grants', 'Donations', 'Other Income'];
+const CATEGORIES_EXPENSE = ['Office Supplies', 'Utilities', 'Salaries', 'Infrastructure', 'Events', 'Maintenance', 'Other Expense'];
+const PAYMENT_METHODS    = ['Cash', 'Check', 'Bank Transfer', 'GCash', 'Maya'];
+
+function FinanceForm({ initial, onSave, onCancel, loading }) {
+  const [form, setForm] = useState(initial || {
+    transaction_type: 'income', description: '', amount: '',
+    category: '', payment_method: 'Cash', receipt_number: '',
+    transaction_date: new Date().toISOString().split('T')[0], notes: ''
   });
-  
-  const [formData, setFormData] = useState({
-    type: 'income',
-    category: '',
-    amount: '',
-    description: '',
-    reference_number: '',
-    transaction_date: new Date().toISOString().split('T')[0]
-  });
-
-  useEffect(() => {
-    fetchData();
-  }, [filters]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [recordsRes, statsRes] = await Promise.all([
-        financeAPI.getAll(filters),
-        financeAPI.getStats()
-      ]);
-      
-      setRecords(recordsRes.data.records || []);
-      setStats(statsRes.data.stats || {});
-    } catch (err) {
-      setError('Failed to fetch data');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const payload = {
-        ...formData,
-        amount: parseFloat(formData.amount)
-      };
-      
-      if (editingRecord) {
-        await financeAPI.update(editingRecord.id, payload);
-      } else {
-        await financeAPI.create(payload);
-      }
-      
-      setShowModal(false);
-      setEditingRecord(null);
-      resetForm();
-      fetchData();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Operation failed');
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      type: 'income',
-      category: '',
-      amount: '',
-      description: '',
-      reference_number: '',
-      transaction_date: new Date().toISOString().split('T')[0]
-    });
-  };
-
-  const handleEdit = (record) => {
-    setEditingRecord(record);
-    setFormData({
-      type: record.type,
-      category: record.category,
-      amount: record.amount,
-      description: record.description || '',
-      reference_number: record.reference_number || '',
-      transaction_date: record.transaction_date?.split('T')[0] || new Date().toISOString().split('T')[0]
-    });
-    setShowModal(true);
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this record?')) return;
-    try {
-      await financeAPI.delete(id);
-      fetchData();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Delete failed');
-    }
-  };
-
-  const handleExport = async () => {
-    try {
-      const response = await financeAPI.export(filters);
-      const blob = new Blob([response.data], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `finance_records_${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-    } catch (err) {
-      setError('Export failed');
-    }
-  };
-
-  const incomeCategories = [
-    'Certificate Fee',
-    'Permit Fee',
-    'Rental Income',
-    'Donation',
-    'Government Allocation',
-    'Other Income'
-  ];
-
-  const expenseCategories = [
-    'Salaries & Wages',
-    'Office Supplies',
-    'Utilities',
-    'Maintenance',
-    'Equipment',
-    'Programs & Activities',
-    'Emergency Relief',
-    'Other Expense'
-  ];
-
-  const categories = formData.type === 'income' ? incomeCategories : expenseCategories;
-
-  if (!hasRole(['admin', 'treasurer'])) {
-    return (
-      <div className="p-6">
-        <div className="bg-red-100 text-red-700 p-4 rounded-lg">
-          You do not have permission to access this page.
-        </div>
-      </div>
-    );
-  }
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const cats = form.transaction_type === 'income' ? CATEGORIES_INCOME : CATEGORIES_EXPENSE;
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <form onSubmit={e => { e.preventDefault(); onSave(form); }} className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Finance Management</h1>
-          <p className="text-gray-600">Track income and expenses</p>
+          <label className="label">Type *</label>
+          <div className="grid grid-cols-2 gap-2">
+            {['income', 'expense'].map(t => (
+              <button key={t} type="button" onClick={() => set('transaction_type', t)}
+                className={`py-2 rounded-xl text-sm font-semibold border-2 transition capitalize
+                  ${form.transaction_type === t
+                    ? t === 'income' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-rose-500 bg-rose-50 text-rose-700'
+                    : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>
+                {t}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex space-x-2">
-          <button
-            onClick={handleExport}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition"
-          >
-            Export CSV
-          </button>
-          <button
-            onClick={() => {
-              setEditingRecord(null);
-              resetForm();
-              setShowModal(true);
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
-          >
-            + Add Record
-          </button>
+        <div>
+          <label className="label">Amount (₱) *</label>
+          <input type="number" min="0" step="0.01" className="input" value={form.amount} onChange={e => set('amount', e.target.value)} required />
+        </div>
+      </div>
+      <div>
+        <label className="label">Description *</label>
+        <input className="input" value={form.description} onChange={e => set('description', e.target.value)} required />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Category</label>
+          <select className="input" value={form.category} onChange={e => set('category', e.target.value)}>
+            <option value="">Select category...</option>
+            {cats.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label">Payment Method</label>
+          <select className="input" value={form.payment_method} onChange={e => set('payment_method', e.target.value)}>
+            {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Transaction Date *</label>
+          <input type="date" className="input" value={form.transaction_date} onChange={e => set('transaction_date', e.target.value)} required />
+        </div>
+        <div>
+          <label className="label">Receipt / OR Number</label>
+          <input className="input" value={form.receipt_number} onChange={e => set('receipt_number', e.target.value)} placeholder="Optional" />
+        </div>
+      </div>
+      <div>
+        <label className="label">Notes</label>
+        <textarea className="input resize-none" rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} />
+      </div>
+      <div className="flex gap-2 justify-end pt-1">
+        <button type="button" onClick={onCancel} className="btn-secondary">Cancel</button>
+        <button type="submit" disabled={loading} className="btn-primary">{loading ? 'Saving...' : 'Save'}</button>
+      </div>
+    </form>
+  );
+}
+
+export default function Finance() {
+  const { toast } = useToast();
+  const [records, setRecords] = useState([]);
+  const [summary, setSummary] = useState({ total_income: 0, total_expense: 0, balance: 0 });
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [filter, setFilter] = useState({ type: '', category: '', startDate: '', endDate: '' });
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = {};
+      if (filter.type) params.transaction_type = filter.type;
+      if (filter.category) params.category = filter.category;
+      if (filter.startDate) params.startDate = filter.startDate;
+      if (filter.endDate) params.endDate = filter.endDate;
+      const res = await financeAPI.getAll(params);
+      setRecords(res.data.finances || []);
+      setSummary(res.data.summary || {});
+    } catch { toast('Failed to load finances', 'error'); }
+    finally { setLoading(false); }
+  }, [filter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleSave(form) {
+    setSaving(true);
+    try {
+      if (modal?.id) await financeAPI.update(modal.id, form);
+      else await financeAPI.create(form);
+      toast(modal?.id ? 'Record updated' : 'Record added', 'success');
+      setModal(null); load();
+    } catch { toast('Failed to save', 'error'); }
+    finally { setSaving(false); }
+  }
+
+  async function handleDelete(id) {
+    if (!confirm('Delete this record?')) return;
+    try { await financeAPI.delete(id); toast('Deleted', 'success'); load(); }
+    catch { toast('Delete failed', 'error'); }
+  }
+
+  async function handleExport() {
+    try {
+      const res = await financeAPI.export();
+      const blob = new Blob([res.data], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'finances.csv'; a.click();
+      toast('Exported', 'success');
+    } catch { toast('Export failed', 'error'); }
+  }
+
+  const fmt = n => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-5">
+      <div className="page-header">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><DollarSign size={22} className="text-emerald-600"/>Finance</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{records.length} transactions</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={handleExport} className="btn-secondary flex items-center gap-1.5"><Download size={15}/>Export</button>
+          <button onClick={() => setModal({})} className="btn-primary flex items-center gap-1.5"><Plus size={15}/>Add Transaction</button>
         </div>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-          {error}
-          <button onClick={() => setError('')} className="float-right">×</button>
-        </div>
-      )}
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
-          <p className="text-gray-600 text-sm">Total Income</p>
-          <p className="text-2xl font-bold text-green-600">₱{(stats.total_income || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-red-500">
-          <p className="text-gray-600 text-sm">Total Expense</p>
-          <p className="text-2xl font-bold text-red-600">₱{(stats.total_expense || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
-          <p className="text-gray-600 text-sm">Net Balance</p>
-          <p className={`text-2xl font-bold ${(stats.total_income - stats.total_expense) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            ₱{((stats.total_income || 0) - (stats.total_expense || 0)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-          </p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-purple-500">
-          <p className="text-gray-600 text-sm">Total Transactions</p>
-          <p className="text-2xl font-bold">{stats.total_count || 0}</p>
-        </div>
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <StatCard title="Total Income" value={fmt(summary.total_income)} icon={TrendingUp} color="emerald" />
+        <StatCard title="Total Expenses" value={fmt(summary.total_expense)} icon={TrendingDown} color="rose" />
+        <StatCard title="Net Balance" value={fmt(summary.balance)} icon={DollarSign} color={summary.balance >= 0 ? 'teal' : 'rose'} />
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-            <select
-              value={filters.type}
-              onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            >
-              <option value="">All Types</option>
-              <option value="income">Income</option>
-              <option value="expense">Expense</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <input
-              type="text"
-              value={filters.category}
-              onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-              placeholder="Filter by category"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-            <input
-              type="date"
-              value={filters.startDate}
-              onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-            <input
-              type="date"
-              value={filters.endDate}
-              onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            />
-          </div>
-        </div>
+      <div className="card p-4 flex flex-wrap gap-3 items-center">
+        <Filter size={14} className="text-gray-400" />
+        {[
+          { value: filter.type, onChange: v => setFilter(p => ({ ...p, type: v })),
+            opts: [['','All Types'],['income','Income'],['expense','Expense']] },
+        ].map((f, i) => (
+          <select key={i} value={f.value} onChange={e => f.onChange(e.target.value)}
+            className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            {f.opts.map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        ))}
+        <input type="date" value={filter.startDate} onChange={e => setFilter(p => ({ ...p, startDate: e.target.value }))}
+          className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        <span className="text-gray-400 text-xs">to</span>
+        <input type="date" value={filter.endDate} onChange={e => setFilter(p => ({ ...p, endDate: e.target.value }))}
+          className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        {(filter.type || filter.startDate || filter.endDate) && (
+          <button onClick={() => setFilter({ type: '', category: '', startDate: '', endDate: '' })}
+            className="text-xs text-indigo-600 hover:underline">Clear</button>
+        )}
       </div>
 
-      {loading ? (
-        <div className="text-center py-12">Loading...</div>
-      ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {records.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-gray-500">No records found</td>
+      {/* Table */}
+      <div className="card overflow-hidden">
+        {loading ? (
+          <div className="p-6 space-y-3">{[...Array(6)].map((_,i) => <div key={i} className="h-10 bg-gray-100 rounded-xl animate-pulse"/>)}</div>
+        ) : records.length === 0 ? (
+          <div className="py-14 text-center text-gray-400">
+            <DollarSign size={36} className="mx-auto mb-2 text-gray-200"/>
+            <p className="font-medium">No transactions found</p>
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead><tr className="bg-gray-50 border-b border-gray-100">
+              {['Date','Type','Description','Category','Payment','Amount','Actions'].map(h => <th key={h} className="table-th">{h}</th>)}
+            </tr></thead>
+            <tbody className="divide-y divide-gray-50">
+              {records.map(r => (
+                <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="table-td text-gray-500 whitespace-nowrap">{new Date(r.transaction_date).toLocaleDateString('en-PH')}</td>
+                  <td className="table-td"><Badge status={r.transaction_type} /></td>
+                  <td className="table-td font-medium text-gray-800">{r.description}</td>
+                  <td className="table-td text-gray-500">{r.category || '—'}</td>
+                  <td className="table-td text-gray-500">{r.payment_method || '—'}</td>
+                  <td className={`table-td font-semibold ${r.transaction_type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {r.transaction_type === 'expense' ? '−' : '+'}{fmt(r.amount)}
+                  </td>
+                  <td className="table-td">
+                    <div className="flex gap-1">
+                      <button onClick={() => setModal(r)} className="icon-btn text-gray-400 hover:text-amber-600"><Pencil size={14}/></button>
+                      <button onClick={() => handleDelete(r.id)} className="icon-btn text-gray-400 hover:text-rose-600"><Trash2 size={14}/></button>
+                    </div>
+                  </td>
                 </tr>
-              ) : (
-                records.map((record) => (
-                  <tr key={record.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(record.transaction_date).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${record.type === 'income' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {record.type?.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.category}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{record.description || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.reference_number || '-'}</td>
-                    <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-right ${record.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                      {record.type === 'income' ? '+' : '-'}₱{parseFloat(record.amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button onClick={() => handleEdit(record)} className="text-blue-600 hover:text-blue-900">Edit</button>
-                      <button onClick={() => handleDelete(record.id)} className="text-red-600 hover:text-red-900">Delete</button>
-                    </td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Add/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">{editingRecord ? 'Edit Record' : 'Add Record'}</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                <select
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value, category: '' })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="income">Income</option>
-                  <option value="expense">Expense</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Select Category</option>
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₱)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Transaction Date</label>
-                <input
-                  type="date"
-                  value={formData.transaction_date}
-                  onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Reference Number</label>
-                <input
-                  type="text"
-                  value={formData.reference_number}
-                  onChange={(e) => setFormData({ ...formData, reference_number: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Optional"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  rows="2"
-                  placeholder="Optional"
-                />
-              </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                  Cancel
-                </button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                  {editingRecord ? 'Update' : 'Create'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <Modal open={!!modal} onClose={() => setModal(null)} title={modal?.id ? 'Edit Transaction' : 'New Transaction'}>
+        <FinanceForm initial={modal?.id ? modal : null} onSave={handleSave} onCancel={() => setModal(null)} loading={saving} />
+      </Modal>
     </div>
   );
 }

@@ -1,126 +1,78 @@
 const pool = require('../config/db');
 
-// Get all finances
 exports.getFinances = async (req, res) => {
   try {
     const { transaction_type, category, page = 1, limit = 20, startDate, endDate } = req.query;
-    const offset = (page - 1) * limit;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    const connection = await pool.getConnection();
-
-    let query = 'SELECT id, transaction_type, description, amount, category, payment_method, receipt_number, transaction_date, created_at FROM finances WHERE 1=1';
+    let query = `SELECT id, transaction_type, description, amount, category, payment_method,
+      receipt_number, transaction_date, created_at FROM finances WHERE 1=1`;
     const params = [];
 
-    if (transaction_type) {
-      query += ' AND transaction_type = ?';
-      params.push(transaction_type);
-    }
-
-    if (category) {
-      query += ' AND category = ?';
-      params.push(category);
-    }
-
-    if (startDate) {
-      query += ' AND DATE(transaction_date) >= ?';
-      params.push(startDate);
-    }
-
-    if (endDate) {
-      query += ' AND DATE(transaction_date) <= ?';
-      params.push(endDate);
-    }
+    if (transaction_type) { params.push(transaction_type); query += ' AND transaction_type = ?'; }
+    if (category) { params.push(category); query += ' AND category = ?'; }
+    if (startDate) { params.push(startDate); query += ' AND transaction_date >= ?'; }
+    if (endDate) { params.push(endDate); query += ' AND transaction_date <= ?'; }
 
     query += ' ORDER BY transaction_date DESC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
+    params.push(parseInt(limit), parseInt(offset));
 
-    const [finances] = await connection.query(query, params);
+    const [finances] = await pool.query(query, params);
 
-    // Get totals
-    let totalQuery = 'SELECT SUM(CASE WHEN transaction_type = "income" THEN amount ELSE 0 END) as total_income, SUM(CASE WHEN transaction_type = "expense" THEN amount ELSE 0 END) as total_expense FROM finances WHERE 1=1';
     const totalParams = [];
+    let totalQuery = `SELECT
+      SUM(CASE WHEN transaction_type = 'income' THEN amount ELSE 0 END) as total_income,
+      SUM(CASE WHEN transaction_type = 'expense' THEN amount ELSE 0 END) as total_expense
+      FROM finances WHERE 1=1`;
 
-    if (transaction_type) {
-      totalQuery += ' AND transaction_type = ?';
-      totalParams.push(transaction_type);
-    }
-    if (category) {
-      totalQuery += ' AND category = ?';
-      totalParams.push(category);
-    }
-    if (startDate) {
-      totalQuery += ' AND DATE(transaction_date) >= ?';
-      totalParams.push(startDate);
-    }
-    if (endDate) {
-      totalQuery += ' AND DATE(transaction_date) <= ?';
-      totalParams.push(endDate);
-    }
+    if (transaction_type) { totalParams.push(transaction_type); totalQuery += ' AND transaction_type = ?'; }
+    if (category) { totalParams.push(category); totalQuery += ' AND category = ?'; }
+    if (startDate) { totalParams.push(startDate); totalQuery += ' AND transaction_date >= ?'; }
+    if (endDate) { totalParams.push(endDate); totalQuery += ' AND transaction_date <= ?'; }
 
-    const [totals] = await connection.query(totalQuery, totalParams);
-    connection.release();
-
-    const balance = (totals[0].total_income || 0) - (totals[0].total_expense || 0);
+    const [totals] = await pool.query(totalQuery, totalParams);
+    const balance = (parseFloat(totals[0]?.total_income) || 0) - (parseFloat(totals[0]?.total_expense) || 0);
 
     res.json({
       success: true,
       finances,
       summary: {
-        total_income: totals[0].total_income || 0,
-        total_expense: totals[0].total_expense || 0,
+        total_income: parseFloat(totals[0]?.total_income) || 0,
+        total_expense: parseFloat(totals[0]?.total_expense) || 0,
         balance
       }
     });
   } catch (error) {
     console.error('Get finances error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch finances'
-    });
+    res.status(500).json({ success: false, message: 'Failed to fetch finances' });
   }
 };
 
-// Create finance record
 exports.createFinance = async (req, res) => {
   try {
     const { transaction_type, description, amount, category, payment_method, receipt_number, transaction_date, notes } = req.body;
 
     if (!transaction_type || !description || !amount || !transaction_date) {
-      return res.status(400).json({
-        success: false,
-        message: 'Required fields are missing'
-      });
+      return res.status(400).json({ success: false, message: 'Required fields are missing' });
     }
 
-    const connection = await pool.getConnection();
-    const [result] = await connection.query(
+    const [result] = await pool.query(
       'INSERT INTO finances (transaction_type, description, amount, category, payment_method, receipt_number, transaction_date, notes, recorded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [transaction_type, description, amount, category, payment_method, receipt_number, transaction_date, notes, req.user.id]
+      [transaction_type, description, amount, category || null, payment_method || null,
+       receipt_number || null, transaction_date, notes || null, req.user.id]
     );
-    connection.release();
 
     res.status(201).json({
       success: true,
       message: 'Finance record created successfully',
-      record: {
-        id: result.insertId,
-        transaction_type,
-        description,
-        amount,
-        category,
-        transaction_date
-      }
+      record: { id: result.insertId, transaction_type, description, amount, category, transaction_date }
     });
   } catch (error) {
     console.error('Create finance error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to create finance record'
-    });
+    res.status(500).json({ success: false, message: 'Failed to create finance record' });
   }
 };
 
-// Update finance
 exports.updateFinance = async (req, res) => {
   try {
     const { id } = req.params;
@@ -129,140 +81,83 @@ exports.updateFinance = async (req, res) => {
     const updateFields = [];
     const updateValues = [];
 
-    if (description) {
-      updateFields.push('description = ?');
-      updateValues.push(description);
-    }
-    if (amount) {
-      updateFields.push('amount = ?');
-      updateValues.push(amount);
-    }
-    if (category) {
-      updateFields.push('category = ?');
-      updateValues.push(category);
-    }
-    if (payment_method) {
-      updateFields.push('payment_method = ?');
-      updateValues.push(payment_method);
-    }
-    if (notes) {
-      updateFields.push('notes = ?');
-      updateValues.push(notes);
-    }
+    if (description !== undefined) { updateFields.push('description = ?'); updateValues.push(description); }
+    if (amount !== undefined) { updateFields.push('amount = ?'); updateValues.push(amount); }
+    if (category !== undefined) { updateFields.push('category = ?'); updateValues.push(category); }
+    if (payment_method !== undefined) { updateFields.push('payment_method = ?'); updateValues.push(payment_method); }
+    if (notes !== undefined) { updateFields.push('notes = ?'); updateValues.push(notes); }
 
     if (updateFields.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'No fields to update'
-      });
+      return res.status(400).json({ success: false, message: 'No fields to update' });
     }
 
     updateValues.push(id);
-
-    const connection = await pool.getConnection();
-    const [result] = await connection.query(
+    const [result] = await pool.query(
       `UPDATE finances SET ${updateFields.join(', ')}, updated_at = NOW() WHERE id = ?`,
       updateValues
     );
-    connection.release();
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Record not found'
-      });
+      return res.status(404).json({ success: false, message: 'Record not found' });
     }
 
-    res.json({
-      success: true,
-      message: 'Finance record updated successfully'
-    });
+    res.json({ success: true, message: 'Finance record updated successfully' });
   } catch (error) {
     console.error('Update finance error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update finance record'
-    });
+    res.status(500).json({ success: false, message: 'Failed to update finance record' });
   }
 };
 
-// Delete finance
 exports.deleteFinance = async (req, res) => {
   try {
     const { id } = req.params;
-
-    const connection = await pool.getConnection();
-    const [result] = await connection.query(
-      'DELETE FROM finances WHERE id = ?',
-      [id]
-    );
-    connection.release();
+    const [result] = await pool.query('DELETE FROM finances WHERE id = ?', [id]);
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Record not found'
-      });
+      return res.status(404).json({ success: false, message: 'Record not found' });
     }
 
-    res.json({
-      success: true,
-      message: 'Finance record deleted successfully'
-    });
+    res.json({ success: true, message: 'Finance record deleted successfully' });
   } catch (error) {
     console.error('Delete finance error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to delete finance record'
-    });
+    res.status(500).json({ success: false, message: 'Failed to delete finance record' });
   }
 };
 
-// Get finance statistics
 exports.getFinanceStats = async (req, res) => {
   try {
-    const connection = await pool.getConnection();
-
-    const [stats] = await connection.query(`
+    const [stats] = await pool.query(`
       SELECT
         SUM(CASE WHEN transaction_type = 'income' THEN amount ELSE 0 END) as total_income,
         SUM(CASE WHEN transaction_type = 'expense' THEN amount ELSE 0 END) as total_expense,
         COUNT(*) as total_transactions,
-        SUM(CASE WHEN DATE(created_at) = CURDATE() THEN 1 ELSE 0 END) as transactions_today
+        SUM(CASE WHEN DATE(created_at) = CURRENT_DATE THEN 1 ELSE 0 END) as transactions_today
       FROM finances
     `);
 
-    connection.release();
-
-    const balance = (stats[0].total_income || 0) - (stats[0].total_expense || 0);
+    const balance = (parseFloat(stats[0]?.total_income) || 0) - (parseFloat(stats[0]?.total_expense) || 0);
 
     res.json({
       success: true,
       stats: {
-        total_income: stats[0].total_income || 0,
-        total_expense: stats[0].total_expense || 0,
+        total_income: parseFloat(stats[0]?.total_income) || 0,
+        total_expense: parseFloat(stats[0]?.total_expense) || 0,
         balance,
-        total_transactions: stats[0].total_transactions || 0,
-        transactions_today: stats[0].transactions_today || 0
+        total_transactions: parseInt(stats[0]?.total_transactions) || 0,
+        transactions_today: parseInt(stats[0]?.transactions_today) || 0
       }
     });
   } catch (error) {
     console.error('Get stats error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch statistics'
-    });
+    res.status(500).json({ success: false, message: 'Failed to fetch statistics' });
   }
 };
 
-// Export finance to CSV
 exports.exportFinances = async (req, res) => {
   try {
-    const connection = await pool.getConnection();
-    const [finances] = await connection.query(
+    const [finances] = await pool.query(
       'SELECT id, transaction_type, description, amount, category, payment_method, receipt_number, transaction_date, created_at FROM finances ORDER BY transaction_date DESC'
     );
-    connection.release();
 
     const csv = [
       ['ID', 'Type', 'Description', 'Amount', 'Category', 'Payment Method', 'Receipt #', 'Date', 'Created At'].join(',')
@@ -270,15 +165,9 @@ exports.exportFinances = async (req, res) => {
 
     finances.forEach(f => {
       csv.push([
-        f.id,
-        f.transaction_type,
-        `"${f.description}"`,
-        f.amount,
-        f.category || '',
-        f.payment_method || '',
-        f.receipt_number || '',
-        f.transaction_date,
-        f.created_at
+        f.id, f.transaction_type, `"${f.description}"`, f.amount,
+        f.category || '', f.payment_method || '', f.receipt_number || '',
+        f.transaction_date, f.created_at
       ].join(','));
     });
 
@@ -287,9 +176,6 @@ exports.exportFinances = async (req, res) => {
     res.send(csv.join('\n'));
   } catch (error) {
     console.error('Export error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to export finances'
-    });
+    res.status(500).json({ success: false, message: 'Failed to export finances' });
   }
 };

@@ -1,389 +1,177 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { requestsAPI, residentsAPI } from '../api/apiClient';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/Toast';
+import Modal from '../components/Modal';
+import Badge from '../components/Badge';
+import ResidentSearch from '../components/ResidentSearch';
+import { ClipboardList, Plus, Search, CheckCircle, XCircle, Loader, CheckSquare, Trash2, QrCode } from 'lucide-react';
+
+const REQUEST_TYPES = [
+  'Barangay Clearance','Certificate of Indigency','Certificate of Residency',
+  'Business Clearance','Building Permit','Fencing Permit','Good Moral Certificate','Other',
+];
 
 export default function Requests() {
-  const { hasRole } = useAuth();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const canApprove = ['admin','captain'].includes(user?.role);
+
   const [requests, setRequests] = useState([]);
   const [residents, setResidents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [viewingRequest, setViewingRequest] = useState(null);
-  const [filters, setFilters] = useState({
-    status: '',
-    type: ''
-  });
-  
-  const [formData, setFormData] = useState({
-    resident_id: '',
-    request_type: 'barangay_clearance',
-    purpose: '',
-    remarks: ''
-  });
+  const [modal, setModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [form, setForm] = useState({ resident_id: '', request_type: '', purpose: '', remarks: '' });
 
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = {};
+      if (filterStatus) params.status = filterStatus;
+      const res = await requestsAPI.getAll(params);
+      let list = res.data.requests || [];
+      if (search) list = list.filter(r => r.resident_name?.toLowerCase().includes(search.toLowerCase()) || r.control_number?.includes(search));
+      setRequests(list);
+    } catch { toast('Failed to load requests', 'error'); }
+    finally { setLoading(false); }
+  }, [filterStatus, search]);
+
+  useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    fetchData();
+    residentsAPI.getAll(1, 500).then(r => setResidents(r.data.residents || [])).catch(() => {});
   }, []);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [requestsRes, residentsRes] = await Promise.all([
-        requestsAPI.getAll(),
-        residentsAPI.getAll(1, 1000)
-      ]);
-      
-      setRequests(requestsRes.data.requests || []);
-      setResidents(residentsRes.data.residents || []);
-    } catch (err) {
-      setError('Failed to fetch data');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e) => {
+  async function handleCreate(e) {
     e.preventDefault();
+    setSaving(true);
     try {
-      await requestsAPI.create(formData);
-      setShowModal(false);
-      resetForm();
-      fetchData();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create request');
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      resident_id: '',
-      request_type: 'barangay_clearance',
-      purpose: '',
-      remarks: ''
-    });
-  };
-
-  const handleApprove = async (id) => {
-    try {
-      await requestsAPI.approve(id);
-      fetchData();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Approval failed');
-    }
-  };
-
-  const handleReject = async (id) => {
-    const reason = window.prompt('Enter rejection reason:');
-    if (!reason) return;
-    try {
-      await requestsAPI.reject(id, reason);
-      fetchData();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Rejection failed');
-    }
-  };
-
-  const handleProcess = async (id) => {
-    try {
-      await requestsAPI.process(id);
-      fetchData();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Processing failed');
-    }
-  };
-
-  const handleComplete = async (id) => {
-    try {
-      await requestsAPI.complete(id);
-      fetchData();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Completion failed');
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this request?')) return;
-    try {
-      await requestsAPI.delete(id);
-      fetchData();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Delete failed');
-    }
-  };
-
-  const getStatusBadge = (status) => {
-    const colors = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      approved: 'bg-blue-100 text-blue-800',
-      processing: 'bg-purple-100 text-purple-800',
-      completed: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800'
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
-
-  const requestTypes = [
-    { value: 'barangay_clearance', label: 'Barangay Clearance' },
-    { value: 'residency', label: 'Certificate of Residency' },
-    { value: 'indigency', label: 'Certificate of Indigency' },
-    { value: 'business_permit', label: 'Business Permit' },
-    { value: 'good_moral', label: 'Good Moral Certificate' },
-    { value: 'other', label: 'Other' }
-  ];
-
-  const statuses = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'approved', label: 'Approved' },
-    { value: 'processing', label: 'Processing' },
-    { value: 'completed', label: 'Completed' },
-    { value: 'rejected', label: 'Rejected' }
-  ];
-
-  // Filter requests
-  const filteredRequests = requests.filter(request => {
-    if (filters.status && request.status !== filters.status) return false;
-    if (filters.type && request.request_type !== filters.type) return false;
-    return true;
-  });
-
-  // Stats
-  const stats = {
-    total: requests.length,
-    pending: requests.filter(r => r.status === 'pending').length,
-    processing: requests.filter(r => r.status === 'processing' || r.status === 'approved').length,
-    completed: requests.filter(r => r.status === 'completed').length
-  };
-
-  if (!hasRole(['admin', 'secretary', 'captain'])) {
-    return (
-      <div className="p-6">
-        <div className="bg-red-100 text-red-700 p-4 rounded-lg">
-          You do not have permission to access this page.
-        </div>
-      </div>
-    );
+      await requestsAPI.create(form);
+      toast('Request created successfully', 'success');
+      setModal(false);
+      setForm({ resident_id: '', request_type: '', purpose: '', remarks: '' });
+      load();
+    } catch { toast('Failed to create request', 'error'); }
+    finally { setSaving(false); }
   }
 
+  const action = async (fn, label) => {
+    try { await fn(); toast(label, 'success'); load(); }
+    catch { toast(`Failed: ${label}`, 'error'); }
+  };
+
+  const statusCounts = requests.reduce((acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {});
+
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="max-w-7xl mx-auto space-y-5">
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Request Management</h1>
-          <p className="text-gray-600">Process resident requests and certificates</p>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><ClipboardList size={22} className="text-amber-600"/>Requests</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{requests.length} total requests</p>
         </div>
-        <button
-          onClick={() => {
-            resetForm();
-            setShowModal(true);
-          }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
-        >
-          + New Request
-        </button>
+        <button onClick={() => setModal(true)} className="btn-primary flex items-center gap-1.5"><Plus size={15}/>New Request</button>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-          {error}
-          <button onClick={() => setError('')} className="float-right">×</button>
-        </div>
-      )}
+      {/* Status pills */}
+      <div className="flex flex-wrap gap-2">
+        {[['','All',requests.length],['pending','Pending',statusCounts.pending||0],['approved','Approved',statusCounts.approved||0],
+          ['processing','Processing',statusCounts.processing||0],['completed','Completed',statusCounts.completed||0],['rejected','Rejected',statusCounts.rejected||0]
+        ].map(([v,l,n]) => (
+          <button key={v} onClick={() => setFilterStatus(v)}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition
+              ${filterStatus === v ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'}`}>
+            {l} <span className="ml-1 opacity-70">{n}</span>
+          </button>
+        ))}
+      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
-          <p className="text-gray-600 text-sm">Total Requests</p>
-          <p className="text-2xl font-bold">{stats.total}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-yellow-500">
-          <p className="text-gray-600 text-sm">Pending</p>
-          <p className="text-2xl font-bold">{stats.pending}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-purple-500">
-          <p className="text-gray-600 text-sm">Processing</p>
-          <p className="text-2xl font-bold">{stats.processing}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
-          <p className="text-gray-600 text-sm">Completed</p>
-          <p className="text-2xl font-bold">{stats.completed}</p>
+      {/* Search */}
+      <div className="card p-4 flex gap-3">
+        <div className="relative flex-1">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by resident name or control number..."
+            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-gray-50"/>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            >
-              <option value="">All Statuses</option>
-              {statuses.map(s => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
+      {/* Table */}
+      <div className="card overflow-hidden">
+        {loading ? (
+          <div className="p-6 space-y-3">{[...Array(6)].map((_,i)=><div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse"/>)}</div>
+        ) : requests.length === 0 ? (
+          <div className="py-14 text-center text-gray-400">
+            <ClipboardList size={36} className="mx-auto mb-2 text-gray-200"/>
+            <p className="font-medium">No requests found</p>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Type</label>
-            <select
-              value={filters.type}
-              onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            >
-              <option value="">All Types</option>
-              {requestTypes.map(t => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-end">
-            <button
-              onClick={() => setFilters({ status: '', type: '' })}
-              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition"
-            >
-              Clear Filters
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="text-center py-12">Loading...</div>
-      ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Control #</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Resident</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Purpose</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredRequests.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-gray-500">No requests found</td>
+        ) : (
+          <table className="w-full text-sm">
+            <thead><tr className="bg-gray-50 border-b border-gray-100">
+              {['Control #','Resident','Type','Purpose','Status','Date','Actions'].map(h=><th key={h} className="table-th">{h}</th>)}
+            </tr></thead>
+            <tbody className="divide-y divide-gray-50">
+              {requests.map(r => (
+                <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="table-td font-mono text-xs text-indigo-700 font-semibold">{r.control_number}</td>
+                  <td className="table-td font-medium text-gray-800">{r.resident_name || '—'}</td>
+                  <td className="table-td text-gray-600">{r.request_type}</td>
+                  <td className="table-td text-gray-500 max-w-xs truncate">{r.purpose || '—'}</td>
+                  <td className="table-td"><Badge status={r.status}/></td>
+                  <td className="table-td text-gray-500 whitespace-nowrap">{new Date(r.created_at).toLocaleDateString('en-PH')}</td>
+                  <td className="table-td">
+                    <div className="flex gap-1">
+                      {canApprove && r.status === 'pending' && <>
+                        <button onClick={() => action(() => requestsAPI.approve(r.id), 'Approved')} title="Approve" className="icon-btn text-gray-400 hover:text-emerald-600"><CheckCircle size={15}/></button>
+                        <button onClick={() => action(() => requestsAPI.reject(r.id), 'Rejected')} title="Reject" className="icon-btn text-gray-400 hover:text-rose-600"><XCircle size={15}/></button>
+                      </>}
+                      {r.status === 'approved' &&
+                        <button onClick={() => action(() => requestsAPI.process(r.id), 'Processing')} title="Process" className="icon-btn text-gray-400 hover:text-blue-600"><Loader size={15}/></button>}
+                      {r.status === 'processing' &&
+                        <button onClick={() => action(() => requestsAPI.complete(r.id), 'Completed')} title="Complete" className="icon-btn text-gray-400 hover:text-teal-600"><CheckSquare size={15}/></button>}
+                      <button onClick={() => action(() => requestsAPI.delete(r.id), 'Deleted')} title="Delete" className="icon-btn text-gray-400 hover:text-rose-600"><Trash2 size={14}/></button>
+                    </div>
+                  </td>
                 </tr>
-              ) : (
-                filteredRequests.map((request) => (
-                  <tr key={request.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {request.control_number}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {request.resident_name || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {request.request_type?.replace('_', ' ')}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                      {request.purpose || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(request.status)}`}>
-                        {request.status?.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(request.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-1">
-                      {request.status === 'pending' && (
-                        <>
-                          <button onClick={() => handleApprove(request.id)} className="text-green-600 hover:text-green-900">Approve</button>
-                          <button onClick={() => handleReject(request.id)} className="text-red-600 hover:text-red-900">Reject</button>
-                        </>
-                      )}
-                      {request.status === 'approved' && (
-                        <button onClick={() => handleProcess(request.id)} className="text-purple-600 hover:text-purple-900">Process</button>
-                      )}
-                      {request.status === 'processing' && (
-                        <button onClick={() => handleComplete(request.id)} className="text-green-600 hover:text-green-900">Complete</button>
-                      )}
-                      <button onClick={() => handleDelete(request.id)} className="text-red-600 hover:text-red-900">Delete</button>
-                    </td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* New Request Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <h2 className="text-xl font-bold mb-4">New Request</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Resident *</label>
-                <select
-                  value={formData.resident_id}
-                  onChange={(e) => setFormData({ ...formData, resident_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Select Resident</option>
-                  {residents.map((r) => (
-                    <option key={r.id} value={r.id}>{r.first_name} {r.last_name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Request Type *</label>
-                <select
-                  value={formData.request_type}
-                  onChange={(e) => setFormData({ ...formData, request_type: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  {requestTypes.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Purpose *</label>
-                <textarea
-                  value={formData.purpose}
-                  onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  rows="3"
-                  placeholder="State the purpose of this request..."
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
-                <textarea
-                  value={formData.remarks}
-                  onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  rows="2"
-                  placeholder="Additional notes (optional)"
-                />
-              </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                  Cancel
-                </button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                  Create Request
-                </button>
-              </div>
-            </form>
+      {/* Create Modal */}
+      <Modal open={modal} onClose={() => setModal(false)} title="New Service Request">
+        <form onSubmit={handleCreate} className="space-y-4">
+          <div>
+            <ResidentSearch
+              label="Resident *"
+              residents={residents}
+              value={form.resident_id}
+              onChange={v => setForm(p => ({ ...p, resident_id: v }))}
+              required
+            />
           </div>
-        </div>
-      )}
+          <div>
+            <label className="label">Request Type *</label>
+            <select className="input" value={form.request_type} onChange={e => setForm(p=>({...p,request_type:e.target.value}))} required>
+              <option value="">Select type...</option>
+              {REQUEST_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Purpose</label>
+            <input className="input" value={form.purpose} onChange={e => setForm(p=>({...p,purpose:e.target.value}))} placeholder="e.g. Employment, Scholarship, Loan..." />
+          </div>
+          <div>
+            <label className="label">Remarks</label>
+            <textarea className="input resize-none" rows={2} value={form.remarks} onChange={e => setForm(p=>({...p,remarks:e.target.value}))} />
+          </div>
+          <div className="flex gap-2 justify-end pt-1">
+            <button type="button" onClick={() => setModal(false)} className="btn-secondary">Cancel</button>
+            <button type="submit" disabled={saving} className="btn-primary">{saving ? 'Creating...' : 'Create Request'}</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

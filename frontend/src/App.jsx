@@ -13,171 +13,61 @@ import Certificates from './pages/Certificates';
 import Finance from './pages/Finance';
 import Requests from './pages/Requests';
 import BlotterManagement from './pages/BlotterManagement';
+import Announcements from './pages/Announcements';
+import Documents from './pages/Documents';
+import Settings from './pages/Settings';
 import AdminLayout from './layouts/AdminLayout';
 
-// Protected Route Component
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
-
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
-
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 }
 
-// Role-Based Route Component
 function RoleBasedRoute({ children, allowedRoles }) {
   const { isAuthenticated, loading, hasRole } = useAuth();
-
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (!hasRole(allowedRoles)) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!hasRole(allowedRoles)) return <Navigate to="/dashboard" replace />;
   return children;
+}
+
+function wrap(Component, roles) {
+  if (roles) {
+    return (
+      <RoleBasedRoute allowedRoles={roles}>
+        <AdminLayout><Component /></AdminLayout>
+      </RoleBasedRoute>
+    );
+  }
+  return (
+    <ProtectedRoute>
+      <AdminLayout><Component /></AdminLayout>
+    </ProtectedRoute>
+  );
 }
 
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public Routes */}
       <Route path="/login" element={<Login />} />
 
-      {/* Dashboard */}
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <AdminLayout>
-              <AdminDashboard />
-            </AdminLayout>
-          </ProtectedRoute>
-        }
-      />
-      
-      {/* Role-specific Dashboards */}
-      <Route
-        path="/captain-dashboard"
-        element={
-          <RoleBasedRoute allowedRoles={['captain', 'admin']}>
-            <AdminLayout>
-              <CaptainDashboard />
-            </AdminLayout>
-          </RoleBasedRoute>
-        }
-      />
-      <Route
-        path="/secretary-dashboard"
-        element={
-          <RoleBasedRoute allowedRoles={['secretary', 'admin']}>
-            <AdminLayout>
-              <SecretaryDashboard />
-            </AdminLayout>
-          </RoleBasedRoute>
-        }
-      />
-      <Route
-        path="/treasurer-dashboard"
-        element={
-          <RoleBasedRoute allowedRoles={['treasurer', 'admin']}>
-            <AdminLayout>
-              <TreasurerDashboard />
-            </AdminLayout>
-          </RoleBasedRoute>
-        }
-      />
+      <Route path="/dashboard" element={wrap(AdminDashboard)} />
+      <Route path="/captain-dashboard" element={wrap(CaptainDashboard, ['captain', 'admin'])} />
+      <Route path="/secretary-dashboard" element={wrap(SecretaryDashboard, ['secretary', 'admin'])} />
+      <Route path="/treasurer-dashboard" element={wrap(TreasurerDashboard, ['treasurer', 'admin'])} />
 
-      {/* Users Management - Admin Only */}
-      <Route
-        path="/users"
-        element={
-          <RoleBasedRoute allowedRoles={['admin']}>
-            <AdminLayout>
-              <Users />
-            </AdminLayout>
-          </RoleBasedRoute>
-        }
-      />
+      <Route path="/users" element={wrap(Users, ['admin'])} />
+      <Route path="/residents" element={wrap(Residents, ['admin', 'secretary'])} />
+      <Route path="/residents/:id" element={wrap(ResidentProfile, ['admin', 'secretary'])} />
+      <Route path="/certificates" element={wrap(Certificates, ['admin', 'secretary'])} />
+      <Route path="/finance" element={wrap(Finance, ['admin', 'treasurer'])} />
+      <Route path="/requests" element={wrap(Requests, ['admin', 'secretary', 'captain'])} />
+      <Route path="/blotter" element={wrap(BlotterManagement, ['admin', 'captain'])} />
+      <Route path="/announcements" element={wrap(Announcements)} />
+      <Route path="/documents" element={wrap(Documents, ['admin', 'secretary'])} />
+      <Route path="/settings" element={wrap(Settings, ['admin'])} />
 
-      {/* Residents Management */}
-      <Route
-        path="/residents"
-        element={
-          <RoleBasedRoute allowedRoles={['admin', 'secretary']}>
-            <AdminLayout>
-              <Residents />
-            </AdminLayout>
-          </RoleBasedRoute>
-        }
-      />
-      <Route
-        path="/residents/:id"
-        element={
-          <RoleBasedRoute allowedRoles={['admin', 'secretary']}>
-            <AdminLayout>
-              <ResidentProfile />
-            </AdminLayout>
-          </RoleBasedRoute>
-        }
-      />
-
-      {/* Certificates Management */}
-      <Route
-        path="/certificates"
-        element={
-          <RoleBasedRoute allowedRoles={['admin', 'secretary']}>
-            <AdminLayout>
-              <Certificates />
-            </AdminLayout>
-          </RoleBasedRoute>
-        }
-      />
-
-      {/* Finance Management */}
-      <Route
-        path="/finance"
-        element={
-          <RoleBasedRoute allowedRoles={['admin', 'treasurer']}>
-            <AdminLayout>
-              <Finance />
-            </AdminLayout>
-          </RoleBasedRoute>
-        }
-      />
-
-      {/* Requests Management */}
-      <Route
-        path="/requests"
-        element={
-          <RoleBasedRoute allowedRoles={['admin', 'secretary', 'captain']}>
-            <AdminLayout>
-              <Requests />
-            </AdminLayout>
-          </RoleBasedRoute>
-        }
-      />
-
-      {/* Blotter Management */}
-      <Route
-        path="/blotter"
-        element={
-          <RoleBasedRoute allowedRoles={['admin', 'captain']}>
-            <AdminLayout>
-              <BlotterManagement />
-            </AdminLayout>
-          </RoleBasedRoute>
-        }
-      />
-
-      {/* Catch all - redirect to dashboard */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

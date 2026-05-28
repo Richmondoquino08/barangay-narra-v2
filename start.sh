@@ -1,45 +1,49 @@
 #!/bin/bash
+# Barangay System Startup Script
+# Usage: bash /home/enovo/barangay-narra/barangay-system/start.sh
 
-# Barangay Management System - Complete Startup Script
-# This script starts both frontend and backend with proper port configuration
+echo "Starting Barangay Narra Management System..."
 
-echo "╔════════════════════════════════════════╗"
-echo "║  Barangay Management System Startup    ║"
-echo "╚════════════════════════════════════════╝"
-echo ""
+# Start PostgreSQL
+sudo service postgresql start 2>/dev/null || true
 
-# Kill any existing processes on the ports
-echo "Cleaning up any existing processes..."
-fuser -k 5001/tcp 2>/dev/null
-fuser -k 3000/tcp 2>/dev/null
+# Kill any previous instances
+pkill -f "node app.js" 2>/dev/null || true
+pkill -f "vite" 2>/dev/null || true
 sleep 1
 
-# Start backend with PM2
-echo "Starting backend on port 5001..."
-cd /root
-pm2 start pm2/ecosystem.config.js
+# Start backend
+cd /home/enovo/barangay-narra/barangay-system/backend
+nohup node app.js > /tmp/backend.log 2>&1 &
+echo "Backend starting..."
+sleep 3
 
-# Wait for backend to be ready
-sleep 2
-
-# Check backend status
-echo ""
-echo "Checking backend health..."
-HEALTH_CHECK=$(curl -s http://localhost:5001/health)
-if [[ $HEALTH_CHECK == *"ok"* ]]; then
-    echo "✅ Backend is running successfully on port 5001"
+# Check backend
+if curl -s http://localhost:3000/health > /dev/null 2>&1; then
+  echo "Backend OK -> http://localhost:3000"
 else
-    echo "❌ Backend health check failed"
+  echo "Backend ERROR - check /tmp/backend.log:"
+  cat /tmp/backend.log
+  exit 1
 fi
 
+# Start frontend
+cd /home/enovo/barangay-narra/barangay-system/frontend
+nohup npm run dev -- --host 0.0.0.0 > /tmp/frontend.log 2>&1 &
+echo "Frontend starting..."
+sleep 5
+
+FRONTEND_PORT=$(grep -oP 'Local:\s+http://localhost:\K[0-9]+' /tmp/frontend.log 2>/dev/null | head -1)
+[ -z "$FRONTEND_PORT" ] && FRONTEND_PORT="5173"
+
 echo ""
-echo "╔════════════════════════════════════════╗"
-echo "║  SERVER CONFIGURATION                  ║"
-echo "╠════════════════════════════════════════╣"
-echo "║  Backend: http://localhost:5001        ║"
-echo "║  Frontend: http://localhost:5173       ║"
-echo "║  Database: PostgreSQL (localhost:5432) ║"
-echo "╚════════════════════════════════════════╝"
+echo "======================================"
+echo "  BARANGAY NARRA SYSTEM IS RUNNING"
+echo "======================================"
+echo "  Open this in your browser:"
+echo "  http://localhost:$FRONTEND_PORT"
 echo ""
-echo "PM2 Status:"
-pm2 status
+echo "  Login credentials:"
+echo "  Email   : admin@barangay.gov.ph"
+echo "  Password: Admin@2024"
+echo "======================================"

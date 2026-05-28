@@ -1,557 +1,296 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { residentsAPI } from '../api/apiClient';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useToast } from '../components/Toast';
+import Modal from '../components/Modal';
+import Badge from '../components/Badge';
+import { Users, Plus, Search, Download, Eye, Pencil, Trash2, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+
+const CIVIL = ['single','married','divorced','widowed'];
+const GENDER = ['male','female','other'];
+
+function ResidentForm({ initial, onSave, onCancel, loading }) {
+  const [form, setForm] = useState(initial || {
+    first_name:'', middle_name:'', last_name:'', gender:'male', birth_date:'',
+    address:'', civil_status:'single', contact_number:'', occupation:'',
+    voter_status: false, senior_citizen: false
+  });
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  return (
+    <form onSubmit={e => { e.preventDefault(); onSave(form); }} className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">First Name *</label>
+          <input className="input" value={form.first_name} onChange={e => set('first_name', e.target.value)} required />
+        </div>
+        <div>
+          <label className="label">Middle Name</label>
+          <input className="input" value={form.middle_name} onChange={e => set('middle_name', e.target.value)} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Last Name *</label>
+          <input className="input" value={form.last_name} onChange={e => set('last_name', e.target.value)} required />
+        </div>
+        <div>
+          <label className="label">Gender *</label>
+          <select className="input" value={form.gender} onChange={e => set('gender', e.target.value)} required>
+            {GENDER.map(g => <option key={g} value={g}>{g.charAt(0).toUpperCase()+g.slice(1)}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Birth Date *</label>
+          <input type="date" className="input" value={form.birth_date} onChange={e => set('birth_date', e.target.value)} required />
+        </div>
+        <div>
+          <label className="label">Civil Status *</label>
+          <select className="input" value={form.civil_status} onChange={e => set('civil_status', e.target.value)} required>
+            {CIVIL.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase()+c.slice(1)}</option>)}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className="label">Address *</label>
+        <input className="input" value={form.address} onChange={e => set('address', e.target.value)} required placeholder="Purok, Barangay, Municipality" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Contact Number</label>
+          <input className="input" value={form.contact_number} onChange={e => set('contact_number', e.target.value)} placeholder="09xxxxxxxxx" />
+        </div>
+        <div>
+          <label className="label">Occupation</label>
+          <input className="input" value={form.occupation} onChange={e => set('occupation', e.target.value)} />
+        </div>
+      </div>
+      <div className="flex gap-6">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" className="w-4 h-4 rounded accent-indigo-600" checked={!!form.voter_status} onChange={e => set('voter_status', e.target.checked)} />
+          <span className="text-sm text-gray-700">Registered Voter</span>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" className="w-4 h-4 rounded accent-indigo-600" checked={!!form.senior_citizen} onChange={e => set('senior_citizen', e.target.checked)} />
+          <span className="text-sm text-gray-700">Senior Citizen (60+)</span>
+        </label>
+      </div>
+      <div className="flex gap-2 justify-end pt-2">
+        <button type="button" onClick={onCancel} className="btn-secondary">Cancel</button>
+        <button type="submit" disabled={loading} className="btn-primary">
+          {loading ? 'Saving...' : 'Save Resident'}
+        </button>
+      </div>
+    </form>
+  );
+}
 
 export default function Residents() {
   const { hasRole } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const canEdit = hasRole(['admin', 'secretary']);
+
   const [residents, setResidents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [editingResident, setEditingResident] = useState(null);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0
-  });
-  
-  const [formData, setFormData] = useState({
-    first_name: '',
-    middle_name: '',
-    last_name: '',
-    suffix: '',
-    birthdate: '',
-    gender: 'male',
-    civil_status: 'single',
-    contact_number: '',
-    email: '',
-    address: '',
-    purok: '',
-    voter_status: false,
-    is_4ps_member: false,
-    is_pwd: false,
-    is_senior: false,
-    occupation: '',
-    monthly_income: ''
-  });
+  const [filterVoter, setFilterVoter] = useState('');
+  const [filterSenior, setFilterSenior] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null); // null | 'add' | {resident}
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    fetchResidents();
-  }, [pagination.page]);
+  const limit = 15;
 
-  const fetchResidents = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await residentsAPI.getAll(pagination.page, pagination.limit);
-      setResidents(response.data.residents || []);
-      setPagination(prev => ({ ...prev, total: response.data.total || 0 }));
-    } catch (err) {
-      setError('Failed to fetch residents');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSearch = async () => {
-    if (!search.trim()) {
-      fetchResidents();
-      return;
-    }
-    try {
-      setLoading(true);
-      const response = await residentsAPI.search(search);
-      setResidents(response.data.residents || []);
-    } catch (err) {
-      setError('Search failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const payload = {
-        ...formData,
-        monthly_income: formData.monthly_income ? parseFloat(formData.monthly_income) : null
-      };
-      
-      if (editingResident) {
-        await residentsAPI.update(editingResident.id, payload);
+      let res;
+      if (search || filterVoter || filterSenior) {
+        res = await residentsAPI.getAll(page, limit);
       } else {
-        await residentsAPI.create(payload);
+        res = await residentsAPI.getAll(page, limit);
       }
-      
-      setShowModal(false);
-      setEditingResident(null);
-      resetForm();
-      fetchResidents();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Operation failed');
-    }
-  };
+      setResidents(res.data.residents || []);
+      setTotal(res.data.total || 0);
+    } catch { toast('Failed to load residents', 'error'); }
+    finally { setLoading(false); }
+  }, [page, search, filterVoter, filterSenior]);
 
-  const resetForm = () => {
-    setFormData({
-      first_name: '',
-      middle_name: '',
-      last_name: '',
-      suffix: '',
-      birthdate: '',
-      gender: 'male',
-      civil_status: 'single',
-      contact_number: '',
-      email: '',
-      address: '',
-      purok: '',
-      voter_status: false,
-      is_4ps_member: false,
-      is_pwd: false,
-      is_senior: false,
-      occupation: '',
-      monthly_income: ''
-    });
-  };
+  useEffect(() => { load(); }, [load]);
 
-  const handleEdit = (resident) => {
-    setEditingResident(resident);
-    setFormData({
-      first_name: resident.first_name || '',
-      middle_name: resident.middle_name || '',
-      last_name: resident.last_name || '',
-      suffix: resident.suffix || '',
-      birthdate: resident.birthdate?.split('T')[0] || '',
-      gender: resident.gender || 'male',
-      civil_status: resident.civil_status || 'single',
-      contact_number: resident.contact_number || '',
-      email: resident.email || '',
-      address: resident.address || '',
-      purok: resident.purok || '',
-      voter_status: resident.voter_status || false,
-      is_4ps_member: resident.is_4ps_member || false,
-      is_pwd: resident.is_pwd || false,
-      is_senior: resident.is_senior || false,
-      occupation: resident.occupation || '',
-      monthly_income: resident.monthly_income || ''
-    });
-    setShowModal(true);
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this resident?')) return;
+  async function handleSave(form) {
+    setSaving(true);
     try {
-      await residentsAPI.delete(id);
-      fetchResidents();
+      if (modal?.id) {
+        await residentsAPI.update(modal.id, form);
+        toast('Resident updated successfully', 'success');
+      } else {
+        await residentsAPI.create(form);
+        toast('Resident added successfully', 'success');
+      }
+      setModal(null);
+      load();
     } catch (err) {
-      setError(err.response?.data?.message || 'Delete failed');
-    }
-  };
-
-  const handleExport = async () => {
-    try {
-      const response = await residentsAPI.export();
-      const blob = new Blob([response.data], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `residents_${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-    } catch (err) {
-      setError('Export failed');
-    }
-  };
-
-  const totalPages = Math.ceil(pagination.total / pagination.limit);
-
-  if (!hasRole(['admin', 'secretary'])) {
-    return (
-      <div className="p-6">
-        <div className="bg-red-100 text-red-700 p-4 rounded-lg">
-          You do not have permission to access this page.
-        </div>
-      </div>
-    );
+      toast(err.response?.data?.message || 'Failed to save', 'error');
+    } finally { setSaving(false); }
   }
 
+  async function handleDelete(r) {
+    if (!confirm(`Delete ${r.full_name}? This cannot be undone.`)) return;
+    try {
+      await residentsAPI.delete(r.id);
+      toast('Resident deleted', 'success');
+      load();
+    } catch { toast('Failed to delete resident', 'error'); }
+  }
+
+  async function handleExport() {
+    try {
+      const res = await residentsAPI.export();
+      const blob = new Blob([res.data], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'residents.csv'; a.click();
+      toast('Exported successfully', 'success');
+    } catch { toast('Export failed', 'error'); }
+  }
+
+  const totalPages = Math.ceil(total / limit);
+
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="max-w-7xl mx-auto space-y-5">
+      {/* Header */}
+      <div className="flex flex-wrap gap-3 items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Resident Management</h1>
-          <p className="text-gray-600">Manage barangay residents</p>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Users size={22} className="text-indigo-600" /> Residents
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5">{total.toLocaleString()} registered residents</p>
         </div>
-        <div className="flex space-x-2">
-          <button
-            onClick={handleExport}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition"
-          >
-            Export CSV
-          </button>
-          <button
-            onClick={() => {
-              setEditingResident(null);
-              resetForm();
-              setShowModal(true);
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
-          >
-            + Add Resident
-          </button>
+        <div className="flex gap-2">
+          <button onClick={handleExport} className="btn-secondary flex items-center gap-1.5"><Download size={15}/> Export CSV</button>
+          {canEdit && <button onClick={() => setModal('add')} className="btn-primary flex items-center gap-1.5"><Plus size={15}/> Add Resident</button>}
         </div>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-          {error}
-          <button onClick={() => setError('')} className="float-right">×</button>
+      {/* Filters */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-48">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search by name, address, contact..."
+            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-gray-50" />
         </div>
-      )}
-
-      {/* Search */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <div className="flex gap-4">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            placeholder="Search by name, address, or contact..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            onClick={handleSearch}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition"
-          >
-            Search
-          </button>
-          <button
-            onClick={() => { setSearch(''); fetchResidents(); }}
-            className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition"
-          >
-            Clear
-          </button>
+        <div className="flex items-center gap-2">
+          <Filter size={14} className="text-gray-400" />
+          <select value={filterVoter} onChange={e => { setFilterVoter(e.target.value); setPage(1); }}
+            className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            <option value="">All Voters</option>
+            <option value="true">Registered Voters</option>
+            <option value="false">Non-Voters</option>
+          </select>
+          <select value={filterSenior} onChange={e => { setFilterSenior(e.target.value); setPage(1); }}
+            className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            <option value="">All Ages</option>
+            <option value="true">Senior Citizens</option>
+            <option value="false">Non-Senior</option>
+          </select>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
-          <p className="text-gray-600 text-sm">Total Residents</p>
-          <p className="text-2xl font-bold">{pagination.total}</p>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="text-center py-12">Loading...</div>
-      ) : (
-        <>
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Address</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Gender</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+      {/* Table */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="p-8 space-y-3">
+            {[...Array(8)].map((_, i) => <div key={i} className="h-10 bg-gray-100 rounded-xl animate-pulse" />)}
+          </div>
+        ) : residents.length === 0 ? (
+          <div className="py-16 text-center">
+            <Users size={40} className="mx-auto text-gray-200 mb-3" />
+            <p className="text-gray-400 font-medium">No residents found</p>
+            <p className="text-gray-300 text-sm">Try adjusting your search or filters</p>
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-100">
+                {['Name', 'Gender', 'Age', 'Address', 'Contact', 'Status', 'Actions'].map(h => (
+                  <th key={h} className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {residents.map(r => (
+                <tr key={r.id} className="hover:bg-indigo-50/30 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold text-xs flex-shrink-0">
+                        {r.first_name[0]}{r.last_name[0]}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-800">{r.full_name}</p>
+                        <p className="text-xs text-gray-400">{r.occupation || '—'}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 capitalize">{r.gender}</td>
+                  <td className="px-4 py-3 text-gray-600">{r.age}</td>
+                  <td className="px-4 py-3 text-gray-600 max-w-xs truncate">{r.address}</td>
+                  <td className="px-4 py-3 text-gray-600">{r.contact_number || '—'}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      {r.voter_status && <Badge status="active" label="Voter" />}
+                      {r.senior_citizen && <Badge status="completed" label="Senior" />}
+                      {!r.voter_status && !r.senior_citizen && <span className="text-gray-400 text-xs">—</span>}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => navigate(`/residents/${r.id}`)} className="icon-btn text-gray-400 hover:text-indigo-600"><Eye size={15}/></button>
+                      {canEdit && <button onClick={() => setModal(r)} className="icon-btn text-gray-400 hover:text-amber-600"><Pencil size={15}/></button>}
+                      {canEdit && <button onClick={() => handleDelete(r)} className="icon-btn text-gray-400 hover:text-rose-600"><Trash2 size={15}/></button>}
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {residents.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="px-6 py-12 text-center text-gray-500">No residents found</td>
-                  </tr>
-                ) : (
-                  residents.map((resident) => (
-                    <tr key={resident.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {resident.first_name} {resident.middle_name} {resident.last_name} {resident.suffix}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {resident.birthdate && new Date(resident.birthdate).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                        {resident.purok && `Purok ${resident.purok}, `}{resident.address}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {resident.contact_number || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
-                        {resident.gender}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-wrap gap-1">
-                          {resident.voter_status && <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">Voter</span>}
-                          {resident.is_4ps_member && <span className="px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded">4Ps</span>}
-                          {resident.is_pwd && <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-800 rounded">PWD</span>}
-                          {resident.is_senior && <span className="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded">Senior</span>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <button 
-                          onClick={() => navigate(`/residents/${resident.id}`)} 
-                          className="text-green-600 hover:text-green-900"
-                        >
-                          View
-                        </button>
-                        <button onClick={() => handleEdit(resident)} className="text-blue-600 hover:text-blue-900">Edit</button>
-                        <button onClick={() => handleDelete(resident.id)} className="text-red-600 hover:text-red-900">Delete</button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
+        )}
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex justify-center items-center space-x-2 mt-6">
-              <button
-                onClick={() => setPagination(p => ({ ...p, page: Math.max(1, p.page - 1) }))}
-                disabled={pagination.page === 1}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <span className="text-gray-600">
-                Page {pagination.page} of {totalPages}
-              </span>
-              <button
-                onClick={() => setPagination(p => ({ ...p, page: Math.min(totalPages, p.page + 1) }))}
-                disabled={pagination.page === totalPages}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-              >
-                Next
-              </button>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
+            <p className="text-xs text-gray-400">Showing {(page-1)*limit+1}–{Math.min(page*limit, total)} of {total}</p>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1} className="icon-btn disabled:opacity-30"><ChevronLeft size={16}/></button>
+              {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                const p = Math.max(1, Math.min(page-2, totalPages-4)) + i;
+                return (
+                  <button key={p} onClick={() => setPage(p)}
+                    className={`w-7 h-7 rounded-lg text-xs font-medium transition ${p === page ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
+                    {p}
+                  </button>
+                );
+              })}
+              <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages} className="icon-btn disabled:opacity-30"><ChevronRight size={16}/></button>
             </div>
-          )}
-        </>
-      )}
-
-      {/* Add/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto py-8">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4">
-            <h2 className="text-xl font-bold mb-4">{editingResident ? 'Edit Resident' : 'Add Resident'}</h2>
-            <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
-              {/* Personal Information */}
-              <div className="border-b pb-4">
-                <h3 className="font-semibold text-gray-700 mb-3">Personal Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
-                    <input
-                      type="text"
-                      value={formData.first_name}
-                      onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
-                    <input
-                      type="text"
-                      value={formData.middle_name}
-                      onChange={(e) => setFormData({ ...formData, middle_name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
-                    <input
-                      type="text"
-                      value={formData.last_name}
-                      onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Suffix</label>
-                    <input
-                      type="text"
-                      value={formData.suffix}
-                      onChange={(e) => setFormData({ ...formData, suffix: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                      placeholder="Jr., Sr., III"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Birthdate *</label>
-                    <input
-                      type="date"
-                      value={formData.birthdate}
-                      onChange={(e) => setFormData({ ...formData, birthdate: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
-                    <select
-                      value={formData.gender}
-                      onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    >
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Civil Status *</label>
-                    <select
-                      value={formData.civil_status}
-                      onChange={(e) => setFormData({ ...formData, civil_status: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    >
-                      <option value="single">Single</option>
-                      <option value="married">Married</option>
-                      <option value="widowed">Widowed</option>
-                      <option value="divorced">Divorced</option>
-                      <option value="separated">Separated</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Information */}
-              <div className="border-b pb-4">
-                <h3 className="font-semibold text-gray-700 mb-3">Contact Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
-                    <input
-                      type="text"
-                      value={formData.contact_number}
-                      onChange={(e) => setFormData({ ...formData, contact_number: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                      placeholder="09XX XXX XXXX"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Address Information */}
-              <div className="border-b pb-4">
-                <h3 className="font-semibold text-gray-700 mb-3">Address Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Purok</label>
-                    <input
-                      type="text"
-                      value={formData.purok}
-                      onChange={(e) => setFormData({ ...formData, purok: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Address *</label>
-                    <input
-                      type="text"
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Status & Employment */}
-              <div className="border-b pb-4">
-                <h3 className="font-semibold text-gray-700 mb-3">Status & Employment</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Occupation</label>
-                    <input
-                      type="text"
-                      value={formData.occupation}
-                      onChange={(e) => setFormData({ ...formData, occupation: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Monthly Income (₱)</label>
-                    <input
-                      type="number"
-                      value={formData.monthly_income}
-                      onChange={(e) => setFormData({ ...formData, monthly_income: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-6">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.voter_status}
-                      onChange={(e) => setFormData({ ...formData, voter_status: e.target.checked })}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">Registered Voter</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.is_4ps_member}
-                      onChange={(e) => setFormData({ ...formData, is_4ps_member: e.target.checked })}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">4Ps Member</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.is_pwd}
-                      onChange={(e) => setFormData({ ...formData, is_pwd: e.target.checked })}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">PWD</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.is_senior}
-                      onChange={(e) => setFormData({ ...formData, is_senior: e.target.checked })}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">Senior Citizen</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                  Cancel
-                </button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                  {editingResident ? 'Update' : 'Create'}
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
+      {/* Modal */}
+      <Modal open={!!modal} onClose={() => setModal(null)} title={modal?.id ? `Edit – ${modal.full_name}` : 'Add New Resident'} size="lg">
+        <ResidentForm
+          initial={modal?.id ? modal : null}
+          onSave={handleSave}
+          onCancel={() => setModal(null)}
+          loading={saving}
+        />
+      </Modal>
     </div>
   );
 }

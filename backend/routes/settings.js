@@ -1,25 +1,36 @@
 const express = require('express');
-const { body, validationResult } = require('express-validator');
+const multer  = require('multer');
+const path    = require('path');
 const { requireAuth } = require('../middleware/auth');
 const { requireRole } = require('../middleware/roles');
 const settingsController = require('../controllers/settingsController');
 
-const router = express.Router();
-router.use(requireAuth);
+// app.js creates this directory at startup
+const uploadDir = path.join(__dirname, '../uploads/settings');
 
-router.get('/', requireRole('admin', 'treasurer', 'secretary', 'captain'), settingsController.getSettings);
-router.post(
-  '/',
-  requireRole('admin'),
-  body('barangay_name').notEmpty(),
-  body('address').notEmpty(),
-  body('captain').notEmpty(),
-  (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-    next();
+const storage = multer.diskStorage({
+  destination: (_, __, cb) => cb(null, uploadDir),
+  filename:    (_, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `${Date.now()}${ext}`);
   },
-  settingsController.saveSettings
-);
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_, file, cb) => {
+    const allowed = /jpeg|jpg|png|gif|webp|svg/i;
+    cb(null, allowed.test(path.extname(file.originalname)));
+  },
+});
+
+const router = express.Router();
+
+// GET is PUBLIC — needed by login page before authentication
+router.get('/', settingsController.getSettings);
+
+// All write operations require admin
+router.post('/',             requireAuth, requireRole('admin'), settingsController.saveSettings);
+router.post('/upload/:type', requireAuth, requireRole('admin'), upload.single('file'), settingsController.uploadAsset);
 
 module.exports = router;

@@ -35,8 +35,9 @@ const PROFILE_DIR = path.join(UPLOAD_DIR, 'profiles');
 const DOCUMENT_DIR = path.join(UPLOAD_DIR, 'documents');
 const TEMPLATE_DIR = path.join(UPLOAD_DIR, 'templates');
 const CERTIFICATE_DIR = path.join(UPLOAD_DIR, 'certificates');
+const SETTINGS_DIR    = path.join(UPLOAD_DIR, 'settings');
 
-[UPLOAD_DIR, PROFILE_DIR, DOCUMENT_DIR, TEMPLATE_DIR, CERTIFICATE_DIR].forEach((dir) => {
+[UPLOAD_DIR, PROFILE_DIR, DOCUMENT_DIR, TEMPLATE_DIR, CERTIFICATE_DIR, SETTINGS_DIR].forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
@@ -44,19 +45,23 @@ const CERTIFICATE_DIR = path.join(UPLOAD_DIR, 'certificates');
 app.use(helmet());
 app.use(compression());
 
-// CORS configuration
+// CORS — allow any origin in dev; use specific origin in prod
+const corsOrigin = process.env.CORS_ORIGIN || '*';
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: corsOrigin === '*' ? true : corsOrigin,   // true = reflect request origin (works with credentials)
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+app.options('*', cors());
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === 'production' ? 200 : 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests. Please wait a moment and try again.' }
 });
 app.use('/api/', limiter);
 
@@ -72,6 +77,7 @@ app.use('/uploads/profiles', express.static(PROFILE_DIR));
 app.use('/uploads/documents', express.static(DOCUMENT_DIR));
 app.use('/uploads/templates', express.static(TEMPLATE_DIR));
 app.use('/uploads/certificates', express.static(CERTIFICATE_DIR));
+app.use('/uploads/settings',    express.static(SETTINGS_DIR));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -92,7 +98,7 @@ app.use('/api/finance', requireAuth, financeRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/blotter', requireAuth, blotterRoutes);
 app.use('/api/documents', requireAuth, documentRoutes);
-app.use('/api/settings', requireAuth, settingsRoutes);
+app.use('/api/settings', settingsRoutes);   // GET is public; auth enforced per-route inside
 app.use('/api/audit', requireAuth, auditRoutes);
 
 // 404 handler

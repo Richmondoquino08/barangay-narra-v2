@@ -1,164 +1,91 @@
 import React, { useState, useEffect } from 'react';
-import { residentsAPI, certificatesAPI } from '../api/apiClient';
+import { useNavigate } from 'react-router-dom';
+import { residentsAPI, certificatesAPI, requestsAPI } from '../api/apiClient';
 import { useAuth } from '../contexts/AuthContext';
+import StatCard from '../components/StatCard';
+import Badge from '../components/Badge';
+import { Users, FileText, ClipboardList, Plus, ArrowRight } from 'lucide-react';
 
 export default function SecretaryDashboard() {
   const { user } = useAuth();
-  const [stats, setStats] = useState({
-    totalResidents: 0,
-    pendingCertificates: 0,
-    approvedCertificates: 0,
-    draftCertificates: 0
-  });
-  const [recentCerts, setRecentCerts] = useState([]);
+  const navigate = useNavigate();
+  const [data, setData] = useState({ residents: 0, certStats: {}, requests: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    async function load() {
       try {
-        setLoading(true);
-        const [residents, certs] = await Promise.all([
-          residentsAPI.getAll(1, 1),
-          certificatesAPI.getAll()
+        const [res, cert, req] = await Promise.allSettled([
+          residentsAPI.getAll(1,1), certificatesAPI.getStats(), requestsAPI.getAll({ status: 'pending' })
         ]);
-
-        const certStats = certs.data.certificates || [];
-        const pending = certStats.filter(c => c.status === 'pending').length;
-        const approved = certStats.filter(c => c.status === 'approved').length;
-        const draft = certStats.filter(c => c.status === 'draft').length;
-
-        setStats({
-          totalResidents: residents.data.total || 0,
-          pendingCertificates: pending,
-          approvedCertificates: approved,
-          draftCertificates: draft
+        setData({
+          residents: res.value?.data?.total || 0,
+          certStats: cert.value?.data?.stats || {},
+          requests: req.value?.data?.requests?.slice(0,5) || [],
         });
-
-        setRecentCerts(certStats.slice(0, 5));
-      } catch (error) {
-        console.error('Error fetching secretary dashboard:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
+      } catch(_) {}
+      finally { setLoading(false); }
+    }
+    load();
   }, []);
 
   return (
-    <div className="p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Welcome, {user?.full_name}!</h1>
-        <p className="text-gray-600 mt-2">Secretary Dashboard</p>
+    <div className="max-w-5xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Secretary Dashboard</h1>
+        <p className="text-gray-500 text-sm mt-0.5">Welcome, {user?.full_name?.split(' ')[0]}</p>
       </div>
 
-      {loading ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500">Loading dashboard...</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard title="Total Residents" value={loading?'..':data.residents} icon={Users} color="blue" />
+        <StatCard title="Certificates Pending" value={loading?'..':Number(data.certStats.pending)||0} icon={FileText} color="amber" />
+        <StatCard title="Certificates Approved" value={loading?'..':Number(data.certStats.approved)||0} icon={FileText} color="emerald" />
+        <StatCard title="Total Certificates" value={loading?'..':Number(data.certStats.total)||0} icon={FileText} color="violet" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-800">Pending Requests</h3>
+            <button onClick={() => navigate('/requests')} className="text-xs text-indigo-600 hover:underline flex items-center gap-1">View all <ArrowRight size={12}/></button>
+          </div>
+          {data.requests.length === 0
+            ? <p className="text-sm text-gray-400 py-4 text-center">No pending requests</p>
+            : <div className="space-y-2">
+                {data.requests.map(r => (
+                  <div key={r.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{r.resident_name}</p>
+                      <p className="text-xs text-gray-400">{r.request_type}</p>
+                    </div>
+                    <Badge status={r.status}/>
+                  </div>
+                ))}
+              </div>
+          }
         </div>
-      ) : (
-        <>
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {/* Total Residents Card */}
-            <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm">Total Residents</p>
-                  <p className="text-3xl font-bold text-gray-800">{stats.totalResidents}</p>
-                </div>
-                <div className="text-4xl text-blue-500 opacity-20">👥</div>
-              </div>
-            </div>
 
-            {/* Pending Certificates Card */}
-            <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm">Pending Certificates</p>
-                  <p className="text-3xl font-bold text-gray-800">{stats.pendingCertificates}</p>
-                </div>
-                <div className="text-4xl text-yellow-500 opacity-20">⏳</div>
-              </div>
-            </div>
-
-            {/* Approved Certificates Card */}
-            <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm">Approved Certificates</p>
-                  <p className="text-3xl font-bold text-gray-800">{stats.approvedCertificates}</p>
-                </div>
-                <div className="text-4xl text-green-500 opacity-20">✓</div>
-              </div>
-            </div>
-
-            {/* Draft Certificates Card */}
-            <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm">Draft Certificates</p>
-                  <p className="text-3xl font-bold text-gray-800">{stats.draftCertificates}</p>
-                </div>
-                <div className="text-4xl text-purple-500 opacity-20">📝</div>
-              </div>
-            </div>
+        <div className="card p-5">
+          <h3 className="font-semibold text-gray-800 mb-4">Quick Actions</h3>
+          <div className="space-y-2">
+            {[
+              { label: 'Add New Resident', path: '/residents', icon: Users, color: 'bg-blue-500' },
+              { label: 'Issue Certificate', path: '/certificates', icon: FileText, color: 'bg-emerald-500' },
+              { label: 'Process Request', path: '/requests', icon: ClipboardList, color: 'bg-amber-500' },
+            ].map(a => {
+              const Icon = a.icon;
+              return (
+                <button key={a.path} onClick={() => navigate(a.path)}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 border border-gray-100 transition text-left">
+                  <div className={`${a.color} p-2 rounded-lg`}><Icon size={15} className="text-white"/></div>
+                  <span className="text-sm font-medium text-gray-700">{a.label}</span>
+                  <ArrowRight size={14} className="ml-auto text-gray-400"/>
+                </button>
+              );
+            })}
           </div>
-
-          {/* Recent Certificates Table */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Certificates</h2>
-            {recentCerts.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-gray-600">
-                  <thead className="bg-gray-50 border-b-2 border-gray-200">
-                    <tr>
-                      <th className="px-4 py-3 text-left">Resident Name</th>
-                      <th className="px-4 py-3 text-left">Certificate Type</th>
-                      <th className="px-4 py-3 text-left">Status</th>
-                      <th className="px-4 py-3 text-left">Date Created</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {recentCerts.map((cert) => (
-                      <tr key={cert.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 font-semibold text-gray-800">{cert.resident_name}</td>
-                        <td className="px-4 py-3">{cert.certificate_type?.replace(/_/g, ' ')}</td>
-                        <td className="px-4 py-3">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            cert.status === 'approved' ? 'bg-green-100 text-green-800' :
-                            cert.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            cert.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {cert.status.charAt(0).toUpperCase() + cert.status.slice(1)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">{new Date(cert.created_at).toLocaleDateString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-8">No certificates found</p>
-            )}
-          </div>
-
-          {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <a href="/residents" className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg transition text-center font-semibold">
-              Manage Residents
-            </a>
-            <a href="/certificates" className="bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg transition text-center font-semibold">
-              Generate Certificate
-            </a>
-            <a href="/certificates" className="bg-purple-600 hover:bg-purple-700 text-white py-3 px-6 rounded-lg transition text-center font-semibold">
-              View All Certificates
-            </a>
-          </div>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 }
