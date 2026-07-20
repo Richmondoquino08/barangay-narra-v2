@@ -103,13 +103,18 @@ export default function Announcements() {
                     <p className="text-gray-600 dark:text-gray-400 mt-1.5 text-sm leading-relaxed whitespace-pre-wrap">{a.message}</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
                       {relTime(a.created_at)} · {new Date(a.created_at).toLocaleString('en-PH')}
+                      {a.posted_by_name && (
+                        <span className="ml-2 text-indigo-500 dark:text-indigo-400 font-medium">
+                          · Posted by {a.posted_by_name}
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
                 {canManage && (
                   <div className="flex gap-1 flex-shrink-0">
-                    <button onClick={() => openEdit(a)} className="icon-btn text-gray-400 hover:text-amber-600"><Pencil size={15}/></button>
-                    <button onClick={() => handleDelete(a.id)} className="icon-btn text-gray-400 hover:text-rose-600"><Trash2 size={15}/></button>
+                    <button onClick={() => openEdit(a)} className="act-btn act-sky"><Pencil size={12}/> Edit</button>
+                    <button onClick={() => handleDelete(a.id)} className="act-btn act-red"><Trash2 size={12}/> Delete</button>
                   </div>
                 )}
               </div>
@@ -141,3 +146,4 @@ export default function Announcements() {
     </div>
   );
 }
+

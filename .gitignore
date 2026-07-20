@@ -39,6 +39,7 @@ Thumbs.db
 .vscode/
 .idea/
 .vscode-server/
+.claude/
 
 # ── Temp setup scripts (not part of source) ───────────────────────
 backend/scripts/migrate.js

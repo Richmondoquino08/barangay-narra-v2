@@ -8,8 +8,14 @@ import ResidentSearch from '../components/ResidentSearch';
 import { ClipboardList, Plus, Search, CheckCircle, XCircle, Loader, CheckSquare, Trash2, QrCode } from 'lucide-react';
 
 const REQUEST_TYPES = [
-  'Barangay Clearance','Certificate of Indigency','Certificate of Residency',
-  'Business Clearance','Building Permit','Fencing Permit','Good Moral Certificate','Other',
+  'Business Clearance',
+  'Building Permit',
+  'Fencing Permit',
+  'Financial Assistance',
+  'Medical Assistance',
+  'Infrastructure Request',
+  'Barangay ID',
+  'Other',
 ];
 
 export default function Requests() {
@@ -65,7 +71,7 @@ export default function Requests() {
   const statusCounts = requests.reduce((acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {});
 
   return (
-    <div className="max-w-7xl mx-auto space-y-5">
+    <div className="w-full space-y-5">
       <div className="page-header">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><ClipboardList size={22} className="text-amber-600"/>Requests</h1>
@@ -122,14 +128,14 @@ export default function Requests() {
                   <td className="table-td">
                     <div className="flex gap-1">
                       {canApprove && r.status === 'pending' && <>
-                        <button onClick={() => action(() => requestsAPI.approve(r.id), 'Approved')} title="Approve" className="icon-btn text-gray-400 hover:text-emerald-600"><CheckCircle size={15}/></button>
-                        <button onClick={() => action(() => requestsAPI.reject(r.id), 'Rejected')} title="Reject" className="icon-btn text-gray-400 hover:text-rose-600"><XCircle size={15}/></button>
+                        <button onClick={() => action(() => requestsAPI.approve(r.id), 'Approved')} className="act-btn act-green"><CheckCircle size={12}/> Approve</button>
+                        <button onClick={() => action(() => requestsAPI.reject(r.id), 'Rejected')} className="act-btn act-red"><XCircle size={12}/> Reject</button>
                       </>}
                       {r.status === 'approved' &&
-                        <button onClick={() => action(() => requestsAPI.process(r.id), 'Processing')} title="Process" className="icon-btn text-gray-400 hover:text-blue-600"><Loader size={15}/></button>}
+                        <button onClick={() => action(() => requestsAPI.process(r.id), 'Processing')} className="act-btn act-sky"><Loader size={12}/> Process</button>}
                       {r.status === 'processing' &&
-                        <button onClick={() => action(() => requestsAPI.complete(r.id), 'Completed')} title="Complete" className="icon-btn text-gray-400 hover:text-teal-600"><CheckSquare size={15}/></button>}
-                      <button onClick={() => action(() => requestsAPI.delete(r.id), 'Deleted')} title="Delete" className="icon-btn text-gray-400 hover:text-rose-600"><Trash2 size={14}/></button>
+                        <button onClick={() => action(() => requestsAPI.complete(r.id), 'Completed')} className="act-btn act-green"><CheckSquare size={12}/> Complete</button>}
+                      <button onClick={() => action(() => requestsAPI.delete(r.id), 'Deleted')} className="act-btn act-red"><Trash2 size={12}/> Delete</button>
                     </div>
                   </td>
                 </tr>

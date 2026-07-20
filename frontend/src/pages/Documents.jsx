@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../api/apiClient';
+import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/Toast';
 import Modal from '../components/Modal';
 import { FolderOpen, Plus, Trash2, Search, Filter } from 'lucide-react';
@@ -18,6 +19,8 @@ function formatSize(bytes) {
 }
 
 export default function Documents() {
+  const { hasRole } = useAuth();
+  const canEdit = hasRole(['admin', 'secretary']);
   const { toast } = useToast();
   const [documents,  setDocuments]  = useState([]);
   const [residents,  setResidents]  = useState([]);
@@ -151,10 +154,7 @@ export default function Documents() {
                     {new Date(doc.created_at).toLocaleDateString('en-PH')}
                   </td>
                   <td className="table-td">
-                    <button onClick={() => handleDelete(doc.id)}
-                      className="icon-btn text-gray-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-rose-400">
-                      <Trash2 size={15}/>
-                    </button>
+                    {canEdit && <button onClick={() => handleDelete(doc.id)} className="act-btn act-red"><Trash2 size={12}/> Delete</button>}
                   </td>
                 </tr>
               ))}
@@ -207,3 +207,4 @@ export default function Documents() {
     </div>
   );
 }
+

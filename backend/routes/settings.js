@@ -3,7 +3,7 @@ const multer  = require('multer');
 const path    = require('path');
 const { requireAuth } = require('../middleware/auth');
 const { requireRole } = require('../middleware/roles');
-const settingsController = require('../controllers/settingsController');
+const { getSettings, saveSettings, uploadAsset, clearAsset } = require('../controllers/settingsController');
 
 // app.js creates this directory at startup
 const uploadDir = path.join(__dirname, '../uploads/settings');
@@ -27,10 +27,11 @@ const upload = multer({
 const router = express.Router();
 
 // GET is PUBLIC — needed by login page before authentication
-router.get('/', settingsController.getSettings);
+router.get('/', getSettings);
 
 // All write operations require admin
-router.post('/',             requireAuth, requireRole('admin'), settingsController.saveSettings);
-router.post('/upload/:type', requireAuth, requireRole('admin'), upload.single('file'), settingsController.uploadAsset);
+router.post('/',              requireAuth, requireRole('admin'), saveSettings);
+router.post('/upload/:type',  requireAuth, requireRole('admin'), upload.single('file'), uploadAsset);
+router.post('/clear/:type',   requireAuth, requireRole('admin'), clearAsset);
 
 module.exports = router;

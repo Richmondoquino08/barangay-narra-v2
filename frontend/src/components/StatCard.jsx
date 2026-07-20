@@ -1,34 +1,84 @@
-import React from 'react';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 
 const palette = {
-  blue:    { light: 'bg-blue-50   border-blue-100',   dark: 'dark:bg-blue-950/40   dark:border-blue-900/50',   icon: 'bg-blue-500',    text: 'text-blue-700   dark:text-blue-300' },
-  emerald: { light: 'bg-emerald-50 border-emerald-100',dark: 'dark:bg-emerald-950/40 dark:border-emerald-900/50',icon: 'bg-emerald-500', text: 'text-emerald-700 dark:text-emerald-300' },
-  violet:  { light: 'bg-violet-50  border-violet-100', dark: 'dark:bg-violet-950/40  dark:border-violet-900/50', icon: 'bg-violet-500',  text: 'text-violet-700  dark:text-violet-300' },
-  amber:   { light: 'bg-amber-50   border-amber-100',  dark: 'dark:bg-amber-950/40   dark:border-amber-900/50',  icon: 'bg-amber-500',   text: 'text-amber-700   dark:text-amber-300' },
-  rose:    { light: 'bg-rose-50    border-rose-100',   dark: 'dark:bg-rose-950/40    dark:border-rose-900/50',   icon: 'bg-rose-500',    text: 'text-rose-700    dark:text-rose-300' },
-  teal:    { light: 'bg-teal-50    border-teal-100',   dark: 'dark:bg-teal-950/40    dark:border-teal-900/50',   icon: 'bg-teal-500',    text: 'text-teal-700    dark:text-teal-300' },
-  indigo:  { light: 'bg-indigo-50  border-indigo-100', dark: 'dark:bg-indigo-950/40  dark:border-indigo-900/50', icon: 'bg-indigo-500',  text: 'text-indigo-700  dark:text-indigo-300' },
+  blue:    { bg: '#EFF6FF', icon: '#2563EB', ring: '#BFDBFE', dbg: 'rgba(37,99,235,0.15)', dring: 'rgba(37,99,235,0.30)' },
+  emerald: { bg: '#ECFDF5', icon: '#059669', ring: '#A7F3D0', dbg: 'rgba(5,150,105,0.15)',  dring: 'rgba(5,150,105,0.30)' },
+  violet:  { bg: '#F5F3FF', icon: '#7C3AED', ring: '#DDD6FE', dbg: 'rgba(124,58,237,0.15)', dring: 'rgba(124,58,237,0.30)' },
+  amber:   { bg: '#FFFBEB', icon: '#D97706', ring: '#FDE68A', dbg: 'rgba(217,119,6,0.15)',  dring: 'rgba(217,119,6,0.30)' },
+  rose:    { bg: '#FFF1F2', icon: '#E11D48', ring: '#FECDD3', dbg: 'rgba(225,29,72,0.15)',  dring: 'rgba(225,29,72,0.30)' },
+  teal:    { bg: '#F0FDFA', icon: '#0D9488', ring: '#99F6E4', dbg: 'rgba(13,148,136,0.15)', dring: 'rgba(13,148,136,0.30)' },
+  indigo:  { bg: '#EEF2FF', icon: '#4338CA', ring: '#C7D2FE', dbg: 'rgba(67,56,202,0.15)', dring: 'rgba(67,56,202,0.30)' },
+  orange:  { bg: '#FFF7ED', icon: '#EA580C', ring: '#FED7AA', dbg: 'rgba(234,88,12,0.15)',  dring: 'rgba(234,88,12,0.30)' },
 };
 
+function useCountUp(rawValue, duration = 900) {
+  const [display, setDisplay] = useState(rawValue);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    const str = String(rawValue ?? '');
+    const prefix   = /^[₱$€£¥]/.test(str) ? str[0] : '';
+    const numStr   = str.replace(/[^0-9.]/g, '');
+    const target   = parseFloat(numStr);
+    const useComma = str.includes(',');
+
+    if (!numStr || isNaN(target)) { setDisplay(rawValue); return; }
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
+    const fmt = n => prefix + (useComma ? Math.round(n).toLocaleString() : Math.round(n).toString());
+    const startTime = performance.now();
+    const tick = now => {
+      const t     = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setDisplay(fmt(eased * target));
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+      else        setDisplay(rawValue);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [rawValue, duration]);
+
+  return display;
+}
+
 export default function StatCard({ title, value, subtitle, icon: Icon, color = 'blue', trend }) {
-  const c = palette[color] || palette.blue;
+  const c           = palette[color] || palette.blue;
+  const animated    = useCountUp(value);
+  const { darkMode } = useTheme();
+
+  const iconBg   = darkMode ? c.dbg   : c.bg;
+  const iconRing = darkMode ? c.dring : c.ring;
+
   return (
-    <div className={`rounded-2xl p-5 border flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow ${c.light} ${c.dark}`}>
-      <div className={`${c.icon} p-2.5 rounded-xl shadow-sm flex-shrink-0`}>
-        {Icon && <Icon size={20} className="text-white" />}
-      </div>
+    <div className="card px-5 py-4 flex items-center gap-4">
+      {Icon && (
+        <div className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center"
+          style={{ background: iconBg, border: `1.5px solid ${iconRing}` }}>
+          <Icon size={20} style={{ color: c.icon }} />
+        </div>
+      )}
+
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-500 dark:text-slate-400 truncate">{title}</p>
-        <p className="text-2xl font-bold text-gray-900 dark:text-slate-100 mt-0.5 truncate">{value ?? '—'}</p>
-        {subtitle && <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{subtitle}</p>}
-        {trend !== undefined && (
-          <div className={`flex items-center gap-1 mt-1 text-xs font-medium ${trend >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
-            {trend >= 0 ? <TrendingUp size={12}/> : <TrendingDown size={12}/>}
-            {Math.abs(trend)}% vs last month
-          </div>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-slate-400 mb-0.5 truncate">
+          {title}
+        </p>
+        <p className="text-2xl font-black text-gray-900 dark:text-slate-50 leading-none tabular-nums">
+          {animated}
+        </p>
+        {subtitle && (
+          <p className="text-xs mt-1 text-gray-400 dark:text-slate-500 truncate">{subtitle}</p>
         )}
       </div>
+
+      {trend !== undefined && (
+        <span className={`flex-shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full
+          ${trend >= 0
+            ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/25 dark:text-emerald-400'
+            : 'bg-rose-50 text-rose-600 dark:bg-rose-900/25 dark:text-rose-400'}`}>
+          {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}%
+        </span>
+      )}
     </div>
   );
 }

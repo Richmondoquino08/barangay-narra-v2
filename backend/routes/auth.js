@@ -54,5 +54,3 @@ router.post('/change-password', requireAuth, [
 router.post('/logout', requireAuth, authController.logout);
 
 module.exports = router;
-
-module.exports = router;

@@ -3,7 +3,12 @@ const auditService = require('../services/auditService');
 
 async function getAnnouncements(req, res, next) {
   try {
-    const [rows] = await db.query('SELECT * FROM announcements ORDER BY created_at DESC LIMIT 50');
+    const [rows] = await db.query(`
+      SELECT a.*, u.full_name AS posted_by_name, u.role AS posted_by_role
+      FROM announcements a
+      LEFT JOIN users u ON a.posted_by = u.id
+      ORDER BY a.created_at DESC LIMIT 50
+    `);
     res.json({ announcements: rows });
   } catch (err) {
     next(err);

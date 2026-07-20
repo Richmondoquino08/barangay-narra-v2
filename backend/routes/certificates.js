@@ -14,25 +14,47 @@ const upload = multer({
   dest: 'uploads/templates/',
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (req, file, cb) => {
-    const allowedMimes = ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/pdf'];
-    if (allowedMimes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only DOCX and PDF files are allowed'));
-    }
+    const allowedMimes = [
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/pdf',
+    ];
+    cb(null, allowedMimes.includes(file.mimetype));
   }
 });
+
+// Multer for header images (PNG/JPG/SVG)
+const uploadImage = multer({
+  dest: 'uploads/templates/',
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    cb(null, /jpeg|jpg|png|svg|webp/i.test(path.extname(file.originalname)));
+  }
+});
+
+// All certificate types supported by the system (must match frontend CERT_TYPES
+// in Certificates.jsx and the certificates/certificate_templates CHECK constraints).
+const CERTIFICATE_TYPES = [
+  'barangay_clearance', 'residency', 'indigency', 'business_permit',
+  'good_moral', 'ftjs', 'no_income', 'senior_citizen_cert', 'pwd_cert',
+  'cohabitation', 'guardianship', 'travel_permit',
+  'cert_ftj', 'affidavit_of_loss', 'bail_bond', 'clearance_thumbmark',
+  'residency_thumbmark', 'cert_death', 'solo_parent', 'cert_appearance',
+  'business_closure', 'cert_loan', 'no_fixed_income', 'cohabitation_dswd',
+  'tanod_death_claim', 'delayed_registration', 'cert_employment',
+  'permit_to_transfer', 'endorsement_letter',
+];
 
 // Validation middleware
 const validateTemplate = [
   body('template_name').notEmpty().withMessage('Template name is required'),
-  body('certificate_type').isIn(['barangay_clearance', 'indigency', 'residency', 'business_permit']).withMessage('Invalid certificate type')
+  body('certificate_type').isIn(CERTIFICATE_TYPES).withMessage('Invalid certificate type')
 ];
 
 const validateCertificate = [
   body('resident_id').isInt().withMessage('Valid resident ID is required'),
-  body('certificate_type').isIn(['barangay_clearance', 'indigency', 'residency', 'business_permit']).withMessage('Invalid certificate type'),
-  body('purpose').optional()
+  body('certificate_type').isIn(CERTIFICATE_TYPES).withMessage('Invalid certificate type'),
+  body('purpose').optional(),
+  body('custom_fields').optional()
 ];
 
 const handleValidationErrors = (req, res, next) => {
@@ -65,6 +87,11 @@ router.get('/templates/:id', certificatesController.getTemplateById);
 
 // Delete template (admin, secretary)
 router.delete('/templates/:id', requireRole('admin', 'secretary'), certificatesController.deleteTemplate);
+
+// Custom visual templates
+router.post('/templates/custom',        requireRole('admin', 'secretary'), certificatesController.createCustomTemplate);
+router.put('/templates/:id/custom',     requireRole('admin', 'secretary'), certificatesController.updateCustomTemplate);
+router.post('/templates/upload-image',  requireRole('admin', 'secretary'), uploadImage.single('image'), certificatesController.uploadHeaderImage);
 
 // Certificate routes
 // Generate certificate (secretary)

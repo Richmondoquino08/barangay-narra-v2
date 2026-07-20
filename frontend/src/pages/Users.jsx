@@ -79,7 +79,7 @@ export default function Users() {
         {loading ? (
           <div className="p-6 space-y-3">{[...Array(4)].map((_,i)=><div key={i} className="h-16 bg-gray-100 dark:bg-[#22263a] rounded-xl animate-pulse"/>)}</div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm min-w-[540px]">
             <thead><tr className="bg-gray-50 dark:bg-[#1e2233] border-b border-gray-100 dark:border-[#2e334a]">
               {['User','Role','Status','Last Login','Actions'].map(h=><th key={h} className="table-th">{h}</th>)}
             </tr></thead>
@@ -103,19 +103,19 @@ export default function Users() {
                   <td className="table-td text-gray-400 dark:text-slate-500 text-xs">{u.last_login ? new Date(u.last_login).toLocaleString('en-PH') : 'Never'}</td>
                   <td className="table-td">
                     <div className="flex items-center gap-1">
-                      <button onClick={() => openEdit(u)} className="icon-btn text-gray-400 hover:text-amber-600" title="Edit"><Pencil size={14}/></button>
-                      <button onClick={() => handleToggle(u)} title={u.is_active ? 'Deactivate':'Activate'}
-                        className={`icon-btn ${u.is_active?'text-emerald-500 hover:text-gray-400':'text-gray-300 hover:text-emerald-500'}`}>
-                        {u.is_active ? <ToggleRight size={18}/> : <ToggleLeft size={18}/>}
+                      <button onClick={() => openEdit(u)} className="act-btn act-sky"><Pencil size={12}/> Edit</button>
+                      <button onClick={() => handleToggle(u)} className={`act-btn ${u.is_active ? 'act-gray' : 'act-green'}`}>
+                        {u.is_active ? <ToggleRight size={14}/> : <ToggleLeft size={14}/>}
+                        {u.is_active ? 'Deactivate' : 'Activate'}
                       </button>
-                      <button onClick={() => setPassModal({ id: u.id, name: u.full_name })} className="icon-btn text-gray-400 hover:text-indigo-600" title="Reset Password"><KeyRound size={14}/></button>
-                      {u.id !== me?.id && <button onClick={() => handleDelete(u)} className="icon-btn text-gray-400 hover:text-rose-600" title="Delete"><Trash2 size={14}/></button>}
+                      <button onClick={() => setPassModal({ id: u.id, name: u.full_name })} className="act-btn act-indigo"><KeyRound size={12}/> Reset Pwd</button>
+                      {u.id !== me?.id && <button onClick={() => handleDelete(u)} className="act-btn act-red"><Trash2 size={12}/> Delete</button>}
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
 

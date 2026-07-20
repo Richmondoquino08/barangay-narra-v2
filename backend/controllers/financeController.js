@@ -126,25 +126,59 @@ exports.deleteFinance = async (req, res) => {
 
 exports.getFinanceStats = async (req, res) => {
   try {
-    const [stats] = await pool.query(`
+    // Itemized collections — primary source for receipts
+    const [colRows] = await pool.query(`
+      SELECT COALESCE(SUM(amount),0)::float AS total, COUNT(*)::int AS cnt
+      FROM collection_items
+    `);
+
+    // Paid disbursement vouchers — primary source for cash out
+    const [dvRows] = await pool.query(`
+      SELECT COALESCE(SUM(amount),0)::float AS total, COUNT(*)::int AS cnt
+      FROM disbursement_vouchers WHERE status = 'paid'
+    `);
+
+    // RAO obligations and disbursements for current fiscal year
+    const [raoRows] = await pool.query(`
       SELECT
-        SUM(CASE WHEN transaction_type = 'income' THEN amount ELSE 0 END) as total_income,
-        SUM(CASE WHEN transaction_type = 'expense' THEN amount ELSE 0 END) as total_expense,
-        COUNT(*) as total_transactions,
-        SUM(CASE WHEN DATE(created_at) = CURRENT_DATE THEN 1 ELSE 0 END) as transactions_today
+        COALESCE(SUM(obligation_amount),0)::float   AS total_obligations,
+        COALESCE(SUM(disbursement_amount),0)::float AS total_disbursed
+      FROM rao_entries
+      WHERE fiscal_year = EXTRACT(YEAR FROM CURRENT_DATE)::int
+    `);
+
+    // Legacy general-ledger entries (pre-module records)
+    const [ledgerRows] = await pool.query(`
+      SELECT
+        COALESCE(SUM(CASE WHEN transaction_type='income'  THEN amount ELSE 0 END),0)::float AS ledger_income,
+        COALESCE(SUM(CASE WHEN transaction_type='expense' THEN amount ELSE 0 END),0)::float AS ledger_expense,
+        COUNT(*)::int AS cnt
       FROM finances
     `);
 
-    const balance = (parseFloat(stats[0]?.total_income) || 0) - (parseFloat(stats[0]?.total_expense) || 0);
+    // Today's activity
+    const [todayRows] = await pool.query(`
+      SELECT
+        (SELECT COUNT(*) FROM collection_items      WHERE DATE(collection_date) = CURRENT_DATE)::int AS col_today,
+        (SELECT COUNT(*) FROM disbursement_vouchers WHERE DATE(paid_date)       = CURRENT_DATE AND status='paid')::int AS dv_today
+    `);
+
+    const totalIncome  = parseFloat(colRows[0].total)  + parseFloat(ledgerRows[0].ledger_income);
+    const totalExpense = parseFloat(dvRows[0].total)   + parseFloat(ledgerRows[0].ledger_expense);
 
     res.json({
       success: true,
       stats: {
-        total_income: parseFloat(stats[0]?.total_income) || 0,
-        total_expense: parseFloat(stats[0]?.total_expense) || 0,
-        balance,
-        total_transactions: parseInt(stats[0]?.total_transactions) || 0,
-        transactions_today: parseInt(stats[0]?.transactions_today) || 0
+        total_income:       totalIncome,
+        total_expense:      totalExpense,
+        balance:            totalIncome - totalExpense,
+        total_transactions: colRows[0].cnt + dvRows[0].cnt + ledgerRows[0].cnt,
+        transactions_today: todayRows[0].col_today + todayRows[0].dv_today,
+        total_collected:    parseFloat(colRows[0].total),
+        total_disbursed:    parseFloat(dvRows[0].total),
+        total_obligations:  parseFloat(raoRows[0].total_obligations),
+        rao_disbursed:      parseFloat(raoRows[0].total_disbursed),
+        dv_paid_count:      dvRows[0].cnt,
       }
     });
   } catch (error) {

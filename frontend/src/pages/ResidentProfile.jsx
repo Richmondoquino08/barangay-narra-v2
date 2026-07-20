@@ -36,7 +36,7 @@ export default function ResidentProfile() {
         setRequests(reqsRes.data.requests || []);
       } catch (err) {
         // Related data fetch failed, but resident loaded
-        console.log('Could not fetch related data');
+        // related data unavailable
       }
     } catch (err) {
       setError('Failed to load resident profile');
@@ -108,19 +108,28 @@ export default function ResidentProfile() {
       {/* Header */}
       <div className="flex justify-between items-start mb-6">
         <div className="flex items-center gap-4">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-3xl font-bold">
-            {resident.first_name?.charAt(0)}{resident.last_name?.charAt(0)}
-          </div>
+          {resident.profile_image_url ? (
+            <img
+              src={resident.profile_image_url}
+              alt={`${resident.first_name} ${resident.last_name}`}
+              className="w-20 h-20 rounded-lg object-cover border-2 border-gray-200 shadow"
+              style={{ aspectRatio: '1/1' }}
+            />
+          ) : (
+            <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-3xl font-bold">
+              {resident.first_name?.charAt(0)}{resident.last_name?.charAt(0)}
+            </div>
+          )}
           <div>
             <h1 className="text-2xl font-bold text-gray-800">
               {resident.first_name} {resident.middle_name} {resident.last_name} {resident.suffix}
             </h1>
             <p className="text-gray-600">{resident.address}</p>
             <div className="flex gap-2 mt-2">
-              {resident.voter_status && <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">Voter</span>}
-              {resident.is_4ps_member && <span className="px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded">4Ps</span>}
-              {resident.is_pwd && <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-800 rounded">PWD</span>}
-              {resident.is_senior && <span className="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded">Senior</span>}
+              {resident.voter_status   && <span className="px-2 py-0.5 text-xs bg-blue-100   text-blue-800   rounded">Voter</span>}
+              {resident.is_4ps        && <span className="px-2 py-0.5 text-xs bg-green-100  text-green-800  rounded">4Ps</span>}
+              {resident.is_pwd        && <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-800 rounded">PWD</span>}
+              {resident.senior_citizen && <span className="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded">Senior</span>}
             </div>
           </div>
         </div>
@@ -132,7 +141,7 @@ export default function ResidentProfile() {
             Back
           </button>
           <button
-            onClick={() => navigate(`/residents`)}
+            onClick={() => navigate('/residents', { state: { editId: id } })}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Edit Resident
@@ -179,11 +188,11 @@ export default function ResidentProfile() {
               </div>
               <div className="flex justify-between">
                 <dt className="text-gray-600">Birthdate</dt>
-                <dd className="font-medium">{resident.birthdate ? new Date(resident.birthdate).toLocaleDateString() : '-'}</dd>
+                <dd className="font-medium">{resident.birth_date ? new Date(resident.birth_date).toLocaleDateString('en-PH', { year:'numeric', month:'long', day:'numeric' }) : '-'}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-gray-600">Age</dt>
-                <dd className="font-medium">{calculateAge(resident.birthdate)} years old</dd>
+                <dd className="font-medium">{calculateAge(resident.birth_date)} years old</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-gray-600">Civil Status</dt>
@@ -244,8 +253,8 @@ export default function ResidentProfile() {
               </div>
               <div className="flex justify-between">
                 <dt className="text-gray-600">4Ps Member</dt>
-                <dd className={`font-medium ${resident.is_4ps_member ? 'text-green-600' : 'text-gray-400'}`}>
-                  {resident.is_4ps_member ? 'Yes' : 'No'}
+                <dd className={`font-medium ${resident.is_4ps ? 'text-green-600' : 'text-gray-400'}`}>
+                  {resident.is_4ps ? 'Yes' : 'No'}
                 </dd>
               </div>
               <div className="flex justify-between">
@@ -256,8 +265,8 @@ export default function ResidentProfile() {
               </div>
               <div className="flex justify-between">
                 <dt className="text-gray-600">Senior Citizen</dt>
-                <dd className={`font-medium ${resident.is_senior ? 'text-green-600' : 'text-gray-400'}`}>
-                  {resident.is_senior ? 'Yes' : 'No'}
+                <dd className={`font-medium ${resident.senior_citizen ? 'text-green-600' : 'text-gray-400'}`}>
+                  {resident.senior_citizen ? 'Yes' : 'No'}
                 </dd>
               </div>
             </dl>
@@ -270,7 +279,7 @@ export default function ResidentProfile() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Control No.</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cert ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Purpose</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -285,7 +294,7 @@ export default function ResidentProfile() {
               ) : (
                 certificates.map((cert) => (
                   <tr key={cert.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{cert.control_number}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 font-mono">CERT-{String(cert.id).padStart(4,'0')}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{cert.certificate_type}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">{cert.purpose}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -345,3 +354,4 @@ export default function ResidentProfile() {
     </div>
   );
 }
+

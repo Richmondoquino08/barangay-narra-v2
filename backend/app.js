@@ -26,6 +26,19 @@ const documentRoutes = require('./routes/documents');
 const settingsRoutes = require('./routes/settings');
 const auditRoutes = require('./routes/audit');
 const certificateRoutes = require('./routes/certificates');
+const officialsRoutes = require('./routes/officials');
+const projectsRoutes  = require('./routes/projects');
+const assetsRoutes    = require('./routes/assets');
+const socialRoutes    = require('./routes/socialPrograms');
+const drrmRoutes      = require('./routes/drrm');
+const budgetRoutes    = require('./routes/budget');
+const refDocsRoutes   = require('./routes/refDocs');
+const financeFormsRoutes = require('./routes/financeForms');
+const raoRoutes = require('./routes/rao');
+const procurementRoutes = require('./routes/procurement');
+const cashbookRoutes = require('./routes/cashbook');
+const collectionsRoutes = require('./routes/collections');
+const transmittalRoutes = require('./routes/transmittal');
 
 const app = express();
 
@@ -42,7 +55,12 @@ const SETTINGS_DIR    = path.join(UPLOAD_DIR, 'settings');
 });
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false,
+  hsts: false,
+  crossOriginOpenerPolicy: false,
+  originAgentCluster: false,
+}));
 app.use(compression());
 
 // CORS — allow any origin in dev; use specific origin in prod
@@ -77,7 +95,8 @@ app.use('/uploads/profiles', express.static(PROFILE_DIR));
 app.use('/uploads/documents', express.static(DOCUMENT_DIR));
 app.use('/uploads/templates', express.static(TEMPLATE_DIR));
 app.use('/uploads/certificates', express.static(CERTIFICATE_DIR));
-app.use('/uploads/settings',    express.static(SETTINGS_DIR));
+app.use('/uploads/settings',  express.static(SETTINGS_DIR));
+app.use('/uploads/ref-docs',  express.static(path.join(__dirname, 'uploads/ref-docs')));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -100,15 +119,33 @@ app.use('/api/blotter', requireAuth, blotterRoutes);
 app.use('/api/documents', requireAuth, documentRoutes);
 app.use('/api/settings', settingsRoutes);   // GET is public; auth enforced per-route inside
 app.use('/api/audit', requireAuth, auditRoutes);
+app.use('/api/officials', requireAuth, officialsRoutes);
+app.use('/api/projects', requireAuth, projectsRoutes);
+app.use('/api/assets', requireAuth, assetsRoutes);
+app.use('/api/social', requireAuth, socialRoutes);
+app.use('/api/drrm',   requireAuth, drrmRoutes);
+app.use('/api/budget',   requireAuth, budgetRoutes);
+app.use('/api/ref-docs', requireAuth, refDocsRoutes);
+app.use('/api/finance-forms', requireAuth, financeFormsRoutes);
+app.use('/api/rao', requireAuth, raoRoutes);
+app.use('/api/procurement', requireAuth, procurementRoutes);
+app.use('/api/cashbook', requireAuth, cashbookRoutes);
+app.use('/api/collections', requireAuth, collectionsRoutes);
+app.use('/api/transmittal', requireAuth, transmittalRoutes);
+app.use('/api/search', requireAuth, require('./routes/search'));
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found',
-    path: req.path
+// Serve frontend production build
+const FRONTEND_DIST = path.join(__dirname, '../frontend/dist');
+if (fs.existsSync(FRONTEND_DIST)) {
+  app.use(express.static(FRONTEND_DIST));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(FRONTEND_DIST, 'index.html'));
   });
-});
+} else {
+  app.use((req, res) => {
+    res.status(404).json({ success: false, message: 'Route not found', path: req.path });
+  });
+}
 
 // Global error handler (must be last)
 app.use(errorHandler);

@@ -58,6 +58,10 @@ router.get('/search/query', requireRole('admin', 'secretary', 'captain', 'treasu
 // Export residents to CSV
 router.get('/export/csv', requireRole('admin', 'secretary'), residentController.exportResidents);
 
+// Import residents - template + bulk import (must be before /:id)
+router.get('/import/template', requireRole('admin', 'secretary'), residentController.getImportTemplate);
+router.post('/import', requireRole('admin', 'secretary'), residentController.importResidents);
+
 // Get resident by ID
 router.get('/:id', requireRole('admin', 'secretary', 'captain', 'treasurer'), residentController.getResidentById);
 

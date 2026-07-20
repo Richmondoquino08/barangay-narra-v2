@@ -135,9 +135,15 @@ export default function AnnouncementPopup() {
           <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed max-h-32 overflow-y-auto whitespace-pre-wrap">
             {current.message}
           </p>
-          <p className="text-xs text-gray-400 mt-2.5">
-            {new Date(current.created_at).toLocaleString('en-PH')}
-          </p>
+          <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+            <span className="text-xs text-gray-400">{new Date(current.created_at).toLocaleString('en-PH')}</span>
+            {current.posted_by_name && (
+              <>
+                <span className="text-xs text-gray-300 dark:text-gray-600">·</span>
+                <span className="text-xs text-indigo-500 dark:text-indigo-400 font-medium">Posted by {current.posted_by_name}</span>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Footer */}
