@@ -42,6 +42,12 @@ const transmittalRoutes = require('./routes/transmittal');
 
 const app = express();
 
+// Trust the first proxy hop (nginx in production) so req.ip and the rate
+// limiter see each real client's actual address instead of nginx's own —
+// without this, every user behind the reverse proxy collapses into a single
+// IP bucket and shares one rate-limit budget for the entire office.
+app.set('trust proxy', 1);
+
 // Create upload directories
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const PROFILE_DIR = path.join(UPLOAD_DIR, 'profiles');
