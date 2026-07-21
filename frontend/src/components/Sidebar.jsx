@@ -8,7 +8,7 @@ import {
   ChevronRight, Shield, HardHat, Package, Heart,
   AlertOctagon, BarChart2, Printer, ChevronLeft, Zap, X, Car, Wallet, Receipt, BookOpen,
   FileSignature, ShoppingCart, PackageCheck, Boxes, Banknote,
-  BookText, Landmark, FileStack, Coins, Mail
+  BookText, Landmark, FileStack, Coins, Mail, Trash2
 } from 'lucide-react';
 
 const SECTION_ICONS = {
@@ -53,6 +53,7 @@ const menuItems = [
   { key: 'bdrrm',         label: 'BDRRM',            path: '/drrm',         icon: AlertOctagon,    section: 'social',         color: '#ef4444' },
   { key: 'announcements', label: 'Announcements',    path: '/announcements',icon: Megaphone,       section: 'comm',           color: '#f59e0b' },
   { key: 'documents',     label: 'Documents',        path: '/documents',    icon: FolderOpen,      section: 'comm',           color: '#64748b' },
+  { key: 'trash',         label: 'Trash',            path: '/trash',        icon: Trash2,          section: 'comm',           color: '#94a3b8' },
   { key: '_users',        label: 'Users',            path: '/users',        icon: Users,           section: 'admin', adminOnly: true, color: '#6366f1' },
 ];
 

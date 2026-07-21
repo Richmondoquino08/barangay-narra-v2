@@ -63,6 +63,7 @@ const PAGE_TITLES = {
   '/drrm':         'BDRRM',
   '/announcements':'Announcements',
   '/documents':    'Documents',
+  '/trash':        'Trash',
   '/users':        'User Management',
   '/settings':     'Settings',
 };

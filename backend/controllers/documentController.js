@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const auditService = require('../services/auditService');
+const trashService = require('../services/trashService');
 const fs = require('fs');
 const path = require('path');
 
@@ -41,17 +42,25 @@ async function uploadDocument(req, res, next) {
 async function deleteDocument(req, res, next) {
   try {
     const { id } = req.params;
-    const [existing] = await db.query('SELECT file_path FROM documents WHERE id = ?', [id]);
-    if (!existing[0]) return res.status(404).json({ error: 'Document not found' });
+    const [existing] = await db.query('SELECT * FROM documents WHERE id = ?', [id]);
+    const doc = existing[0];
+    if (!doc) return res.status(404).json({ error: 'Document not found' });
 
-    // Remove file from disk if it exists
-    try {
-      if (fs.existsSync(existing[0].file_path)) fs.unlinkSync(existing[0].file_path);
-    } catch (_) {}
+    // Note: the file on disk is intentionally NOT removed here — it stays put
+    // so a restore can still serve it. It's only unlinked on permanent delete
+    // or when the trash retention window expires (see trashService.js).
+    await trashService.moveToTrash({
+      sourceTable: 'documents',
+      sourceId: doc.id,
+      itemLabel: doc.file_name || `Document ${doc.id}`,
+      data: doc,
+      userId: req.user.id,
+      userName: req.user.full_name || req.user.email,
+    });
 
     await db.query('DELETE FROM documents WHERE id = ?', [id]);
-    await auditService.logAction(req.user.id, 'delete_document', `Deleted document ${id}`);
-    res.json({ message: 'Document deleted' });
+    await auditService.logAction(req.user.id, 'delete_document', `Moved to trash: ${doc.file_name || id}`);
+    res.json({ message: 'Document moved to trash' });
   } catch (err) {
     next(err);
   }

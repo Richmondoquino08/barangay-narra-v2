@@ -14,6 +14,7 @@ import Finance from './pages/Finance';
 import BlotterManagement from './pages/BlotterManagement';
 import Announcements from './pages/Announcements';
 import Documents from './pages/Documents';
+import Trash from './pages/Trash';
 import Settings from './pages/Settings';
 import Officials from './pages/Officials';
 import Projects from './pages/Projects';
@@ -144,6 +145,7 @@ function AppRoutes() {
       {/* Admin */}
       <Route path="/users"    element={wrap(Users,    ['admin'])} />
       <Route path="/settings" element={wrap(Settings, ['admin'])} />
+      <Route path="/trash"    element={wrap(Trash,    ['admin','secretary'])} />
 
       <Route path="/"  element={<Navigate to="/dashboard" replace />} />
       <Route path="*"  element={<Navigate to="/dashboard" replace />} />

@@ -2,6 +2,8 @@ const pool = require('../config/db');
 const QRCode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
+const trashService = require('../services/trashService');
+const auditService = require('../services/auditService');
 
 exports.uploadTemplate = async (req, res) => {
   try {
@@ -231,13 +233,35 @@ exports.rejectCertificate = async (req, res) => {
 exports.deleteCertificate = async (req, res) => {
   try {
     const { id } = req.params;
-    const [result] = await pool.query('DELETE FROM certificates WHERE id = ?', [id]);
-
-    if (result.affectedRows === 0) {
+    const [rows] = await pool.query(
+      `SELECT c.*, r.first_name, r.middle_name, r.last_name
+       FROM certificates c LEFT JOIN residents r ON c.resident_id = r.id WHERE c.id = ?`,
+      [id]
+    );
+    const cert = rows[0];
+    if (!cert) {
       return res.status(404).json({ success: false, message: 'Certificate not found' });
     }
 
-    res.json({ success: true, message: 'Certificate deleted successfully' });
+    const residentName = cert.first_name
+      ? `${cert.first_name}${cert.middle_name ? ' ' + cert.middle_name : ''} ${cert.last_name}`
+      : 'Unknown resident';
+    const { first_name, middle_name, last_name, ...certData } = cert; // eslint-disable-line no-unused-vars
+
+    await trashService.moveToTrash({
+      sourceTable: 'certificates',
+      sourceId: cert.id,
+      itemLabel: `${cert.certificate_type} — ${residentName}`,
+      data: certData,
+      userId: req.user.id,
+      userName: req.user.full_name || req.user.email,
+    });
+
+    await pool.query('DELETE FROM certificates WHERE id = ?', [id]);
+    await auditService.logAction(req.user.id, 'delete_certificate',
+      `Moved to trash: ${cert.certificate_type} certificate for ${residentName}`);
+
+    res.json({ success: true, message: 'Certificate moved to trash' });
   } catch (error) {
     console.error('Delete certificate error:', error);
     res.status(500).json({ success: false, message: 'Failed to delete certificate' });

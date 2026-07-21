@@ -39,6 +39,8 @@ const procurementRoutes = require('./routes/procurement');
 const cashbookRoutes = require('./routes/cashbook');
 const collectionsRoutes = require('./routes/collections');
 const transmittalRoutes = require('./routes/transmittal');
+const trashRoutes = require('./routes/trash');
+const trashService = require('./services/trashService');
 
 const app = express();
 
@@ -148,6 +150,7 @@ app.use('/api/cashbook', requireAuth, cashbookRoutes);
 app.use('/api/collections', requireAuth, collectionsRoutes);
 app.use('/api/transmittal', requireAuth, transmittalRoutes);
 app.use('/api/search', requireAuth, require('./routes/search'));
+app.use('/api/trash', requireAuth, trashRoutes);
 
 // Serve frontend production build
 const FRONTEND_DIST = path.join(__dirname, '../frontend/dist');
@@ -178,6 +181,14 @@ const server = app.listen(PORT, HOST, () => {
 ╚════════════════════════════════════════╝
   `);
 });
+
+// Trash auto-purge — anything past the retention window (see trashService.js)
+// gets permanently removed, regardless of whether a user already hid it from
+// their own view. Runs once on startup, then every 6 hours.
+trashService.purgeExpired().catch(err => console.error('[trash] purge error:', err.message));
+setInterval(() => {
+  trashService.purgeExpired().catch(err => console.error('[trash] purge error:', err.message));
+}, 6 * 60 * 60 * 1000);
 
 // Handle graceful shutdown
 process.on('SIGTERM', () => {

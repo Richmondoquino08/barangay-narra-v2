@@ -889,6 +889,7 @@ export default function Settings() {
             { section: 'Communication', items: [
               { key: 'announcements', label: 'Announcements' },
               { key: 'documents',     label: 'Documents' },
+              { key: 'trash',         label: 'Trash' },
             ]},
           ];
           const ROLES = [

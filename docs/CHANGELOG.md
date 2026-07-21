@@ -5,6 +5,29 @@ Newest entries first. Each entry lists what changed, why, and which files were t
 
 ---
 
+## 2026-07-22 — Trash / recycle bin feature
+
+**Why:** Directly motivated by the certificate-deletion incident on 2026-07-20 — deletions were permanent with no recovery path. Adds a soft-delete system: normal users' deletions are recoverable, and only admin can truly purge data.
+
+**Scope (phase 1):** Certificates and Documents only. Residents deferred — deleting a resident has cascading relationships (their certificates, documents, blotter cases) that need a deliberate policy decision before soft-delete can be applied there safely.
+
+**How it works:**
+- New `trash_bin` table stores a full JSON snapshot of anything deleted, rather than adding a `deleted_at` column to every table — this means none of the existing read/list queries across ~20 controllers needed to change, so there's no risk of a forgotten filter leaking trashed data back into normal views.
+- Deleting a certificate or document now snapshots the row into `trash_bin` and removes it from the live table — for documents, the uploaded file is deliberately *not* removed from disk yet, so a restore can still serve it.
+- Normal users see only their own deletions (`GET /api/trash/mine`) and can **Restore** or **Delete** (which only hides it from their own view — it is not actually purged, admin can still see and recover it).
+- Admin sees everything (`GET /api/trash/all`, including items a user has "deleted" from their own trash) and can **Restore** or **Permanently Delete** (`DELETE /api/trash/:id`) — only admin can trigger a true, unrecoverable purge.
+- Auto-purge: anything older than 30 days is automatically and permanently removed (file included, for documents) via an interval check in `app.js`, run on startup and every 6 hours.
+- Delete/restore/permanent-delete actions all log through the existing audit log (`audit_logs` table) rather than a new logging system.
+
+**Files added:** `backend/scripts/migrate24.js`, `backend/services/trashService.js`, `backend/controllers/trashController.js`, `backend/routes/trash.js`, `frontend/src/pages/Trash.jsx`.
+**Files changed:** `backend/app.js` (route registration + auto-purge interval), `backend/controllers/certificatesController.js` and `backend/controllers/documentController.js` (delete now moves to trash instead of hard-deleting), `frontend/src/api/apiClient.js`, `frontend/src/App.jsx`, `frontend/src/components/Sidebar.jsx`, `frontend/src/contexts/ThemeContext.jsx`, `frontend/src/pages/Settings.jsx`, `frontend/src/layouts/AdminLayout.jsx` (routing, navigation, and Access Control integration).
+
+**Bug found and fixed along the way:** discovered a real, pre-existing bug pattern while building this — code that does `const [result] = await pool.query(UPDATE/DELETE...)` and then checks `result.affectedRows` never actually works, because `db.query()` returns `[rows, resultInfo]` and `affectedRows` lives on the second element, not the first. This affected my own new `hideForUser` function (fixed). **Not yet checked:** whether this same pattern exists elsewhere in the codebase (e.g. `approveCertificate`, `rejectCertificate` both looked like they might have it) — worth a dedicated review, since it would mean some existing "not found" checks silently never trigger.
+
+**Access control note:** certificate deletion is currently admin-only at the route level (`requireRole('admin')`); only document deletion is available to secretary. So for certificates specifically, trash mainly protects admin from their own accidental/mistaken deletions rather than "normal user deletes, admin recovers" — the trash mechanism still applies the same way, just worth knowing who can actually trigger it today.
+
+---
+
 ## 2026-07-21 — Security hardening
 
 ### HSTS (Strict-Transport-Security) enabled

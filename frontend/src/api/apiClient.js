@@ -313,4 +313,12 @@ export const transmittalAPI = {
   delete: (id) => apiClient.delete(`/transmittal/${id}`),
 };
 
+export const trashAPI = {
+  getMine: () => apiClient.get('/trash/mine'),
+  getAll: () => apiClient.get('/trash/all'),
+  restore: (id) => apiClient.post(`/trash/${id}/restore`),
+  hide: (id) => apiClient.post(`/trash/${id}/hide`),
+  permanentDelete: (id) => apiClient.delete(`/trash/${id}`),
+};
+
 export default apiClient;
