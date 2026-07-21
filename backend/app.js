@@ -63,7 +63,16 @@ const SETTINGS_DIR    = path.join(UPLOAD_DIR, 'settings');
 // Security middleware
 app.use(helmet({
   contentSecurityPolicy: false,
-  hsts: false,
+  // Now that the site is served over a trusted HTTPS cert (via Tailscale),
+  // tell browsers to always use HTTPS for this host and never silently
+  // fall back to plain HTTP. preload is left off since that's an
+  // irreversible public-list submission meant for public domains, not a
+  // private .ts.net hostname.
+  hsts: {
+    maxAge: 31536000, // 1 year
+    includeSubDomains: true,
+    preload: false,
+  },
   crossOriginOpenerPolicy: false,
   originAgentCluster: false,
 }));
