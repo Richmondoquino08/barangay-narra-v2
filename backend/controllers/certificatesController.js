@@ -2,6 +2,7 @@ const pool = require('../config/db');
 const QRCode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const trashService = require('../services/trashService');
 const auditService = require('../services/auditService');
 
@@ -102,7 +103,12 @@ exports.generateCertificate = async (req, res) => {
     const resident = residents[0];
     const fullName = `${resident.first_name}${resident.middle_name ? ' ' + resident.middle_name : ''} ${resident.last_name}`;
 
-    const qrData = `CERT-${Date.now()}-${resident_id}`;
+    // Random, unguessable code — not derived from timestamp/resident_id, which
+    // would let anyone construct a plausible-looking fake certificate code
+    // without ever having seen a real one. Verification (see verifyCertificate
+    // below) works by looking this up against the database, so its only
+    // security property that matters is that it can't be guessed or enumerated.
+    const qrData = `CERT-${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
     const certDir = path.join(__dirname, '../uploads/certificates');
     if (!fs.existsSync(certDir)) fs.mkdirSync(certDir, { recursive: true });
     const qrCodePath = path.join(certDir, `qr-${qrData}.png`);
@@ -112,7 +118,7 @@ exports.generateCertificate = async (req, res) => {
     const feeValue = parseFloat(fee) || 0;
     const customFieldsJson = JSON.stringify(custom_fields && typeof custom_fields === 'object' ? custom_fields : {});
 
-    const [result] = await pool.query(
+    const [, result] = await pool.query(
       `INSERT INTO certificates
          (resident_id, certificate_type, template_id, purpose, issue_date, status,
           fee, or_number, or_date, qr_code_data, created_by, custom_fields)
@@ -189,6 +195,71 @@ exports.getCertificateById = async (req, res) => {
   } catch (error) {
     console.error('Get certificate error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch certificate' });
+  }
+};
+
+// Internal staff-facing verification — accepts either the QR-encoded code
+// (e.g. "CERT-A1B2C3D4E5F6A7B8") or the plain numeric certificate ID (the
+// "Certificate ID: N" text already printed next to the QR). Staff-only
+// (behind requireAuth), so full resident details are shown — this is not a
+// public-facing endpoint, see docs/CHANGELOG.md for why that's a separate,
+// deliberate decision rather than an oversight.
+exports.verifyCertificate = async (req, res) => {
+  try {
+    const code = (req.params.code || '').trim();
+    if (!code) return res.status(400).json({ success: false, message: 'Code is required' });
+
+    const isNumericId = /^\d+$/.test(code);
+    const [rows] = await pool.query(
+      isNumericId
+        ? `SELECT c.*, r.first_name, r.middle_name, r.last_name
+           FROM certificates c LEFT JOIN residents r ON c.resident_id = r.id WHERE c.id = ?`
+        : `SELECT c.*, r.first_name, r.middle_name, r.last_name
+           FROM certificates c LEFT JOIN residents r ON c.resident_id = r.id WHERE c.qr_code_data = ?`,
+      [code]
+    );
+    const cert = rows[0];
+
+    if (!cert) {
+      // Not in the live table — check whether it was deleted, so staff get a
+      // clear answer instead of an ambiguous "not found" for a real document.
+      const [trashRows] = await pool.query(
+        `SELECT * FROM trash_bin WHERE source_table = 'certificates'
+         AND (data->>'id' = ? OR data->>'qr_code_data' = ?)`,
+        [code, code]
+      );
+      const trashed = trashRows[0];
+      if (trashed) {
+        return res.json({
+          success: true, found: false, deleted: true,
+          message: `This certificate was deleted on ${new Date(trashed.deleted_at).toLocaleDateString('en-PH')} by ${trashed.deleted_by_name}.`,
+        });
+      }
+      return res.json({ success: true, found: false, message: 'No certificate found with this code.' });
+    }
+
+    const residentName = cert.first_name
+      ? `${cert.first_name}${cert.middle_name ? ' ' + cert.middle_name : ''} ${cert.last_name}`
+      : 'Unknown resident';
+
+    res.json({
+      success: true,
+      found: true,
+      certificate: {
+        id: cert.id,
+        certificate_type: cert.certificate_type,
+        purpose: cert.purpose,
+        issue_date: cert.issue_date,
+        status: cert.status,
+        or_number: cert.or_number,
+        resident_name: residentName,
+        qr_code_data: cert.qr_code_data,
+        created_at: cert.created_at,
+      },
+    });
+  } catch (error) {
+    console.error('Verify certificate error:', error);
+    res.status(500).json({ success: false, message: 'Verification failed' });
   }
 };
 

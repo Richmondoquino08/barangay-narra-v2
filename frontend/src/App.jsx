@@ -15,6 +15,7 @@ import BlotterManagement from './pages/BlotterManagement';
 import Announcements from './pages/Announcements';
 import Documents from './pages/Documents';
 import Trash from './pages/Trash';
+import VerifyCertificate from './pages/VerifyCertificate';
 import Settings from './pages/Settings';
 import Officials from './pages/Officials';
 import Projects from './pages/Projects';
@@ -99,6 +100,7 @@ function AppRoutes() {
       <Route path="/residents"    element={wrap(Residents,         ['admin','secretary'])} />
       <Route path="/residents/:id" element={wrap(ResidentProfile,  ['admin','secretary'])} />
       <Route path="/certificates" element={wrap(Certificates,      ['admin','secretary'])} />
+      <Route path="/certificates/verify" element={wrap(VerifyCertificate, ['admin','secretary','captain'])} />
       <Route path="/blotter"      element={wrap(BlotterManagement, ['admin','captain','secretary'])} />
 
       {/* Finance */}

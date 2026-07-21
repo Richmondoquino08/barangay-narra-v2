@@ -8,7 +8,7 @@ import {
   ChevronRight, Shield, HardHat, Package, Heart,
   AlertOctagon, BarChart2, Printer, ChevronLeft, Zap, X, Car, Wallet, Receipt, BookOpen,
   FileSignature, ShoppingCart, PackageCheck, Boxes, Banknote,
-  BookText, Landmark, FileStack, Coins, Mail, Trash2
+  BookText, Landmark, FileStack, Coins, Mail, Trash2, ShieldCheck
 } from 'lucide-react';
 
 const SECTION_ICONS = {
@@ -24,6 +24,7 @@ const menuItems = [
   { key: 'dashboard',     label: 'Dashboard',       path: '/dashboard',    icon: LayoutDashboard, section: 'main',           color: '#6366f1' },
   { key: 'residents',     label: 'Residents',        path: '/residents',    icon: Users,           section: 'records',        color: '#3b82f6' },
   { key: 'certificates',  label: 'Certificates',     path: '/certificates', icon: FileText,        section: 'records',        color: '#8b5cf6' },
+  { key: 'verify_certificate', label: 'Verify Certificate', path: '/certificates/verify', icon: ShieldCheck, section: 'records', color: '#22c55e' },
 
   { key: 'blotter',       label: 'Blotter',          path: '/blotter',      icon: AlertTriangle,   section: 'records',        color: '#f59e0b' },
   { key: 'finance',       label: 'Finance',          path: '/finance',      icon: DollarSign,      section: 'finance',        color: '#10b981' },

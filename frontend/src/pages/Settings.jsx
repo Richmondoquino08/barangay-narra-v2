@@ -849,6 +849,7 @@ export default function Settings() {
             { section: 'Records', items: [
               { key: 'residents',     label: 'Residents' },
               { key: 'certificates',  label: 'Certificates' },
+              { key: 'verify_certificate', label: 'Verify Certificate' },
               { key: 'blotter',       label: 'Blotter' },
             ]},
             { section: 'Finance — Overview', items: [

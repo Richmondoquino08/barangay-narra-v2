@@ -108,6 +108,11 @@ router.get('/', certificatesController.getCertificates);
 // Get certificate statistics
 router.get('/stats/overview', certificatesController.getCertificateStats);
 
+// Verify a certificate by QR code or numeric ID (staff-only, internal use).
+// Must come before the generic '/:id' route below or Express would match
+// "/verify" as an :id param instead.
+router.get('/verify/:code', certificatesController.verifyCertificate);
+
 // Get certificate by ID
 router.get('/:id', certificatesController.getCertificateById);
 

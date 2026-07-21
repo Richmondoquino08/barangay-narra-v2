@@ -34,6 +34,7 @@ const PAGE_TITLES = {
   // Records
   '/residents':    'Residents',
   '/certificates': 'Certificates',
+  '/certificates/verify': 'Verify Certificate',
   '/blotter':      'Blotter',
   // Finance sub-pages (must precede generic /finance)
   '/finance/brgy-id':      'Barangay ID',

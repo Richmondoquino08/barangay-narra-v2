@@ -17,9 +17,9 @@ const DEFAULTS = {
 // Default module access per role (admin always has full access — not listed here)
 export const DEFAULT_ROLE_PERMISSIONS = {
   // Captain: governance & public-safety focus only
-  captain:   ['dashboard','blotter','reports','officials','bdrrm','announcements'],
+  captain:   ['dashboard','blotter','reports','officials','bdrrm','announcements','verify_certificate'],
   // Secretary: all records + selected finance forms they prepare
-  secretary: ['dashboard','residents','certificates','blotter','officials','projects','assets','social','bdrrm','announcements','documents','reports','trash','fin_brgy_id','fin_kidlat','fin_trip','fin_pr','fin_ris','fin_transmittal'],
+  secretary: ['dashboard','residents','certificates','verify_certificate','blotter','officials','projects','assets','social','bdrrm','announcements','documents','reports','trash','fin_brgy_id','fin_kidlat','fin_trip','fin_pr','fin_ris','fin_transmittal'],
   // Treasurer: full finance suite + cross-cutting reports
   treasurer: ['dashboard','finance','cheque_print','reports','officials','announcements','fin_brgy_id','fin_kidlat','fin_trip','fin_pcf','fin_sppcv','fin_rao','fin_obr','fin_pr','fin_po','fin_iar','fin_ris','fin_dv','fin_crdr','fin_chbr','fin_checks','fin_collections','fin_transmittal'],
 };

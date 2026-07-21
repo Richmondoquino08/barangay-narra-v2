@@ -78,7 +78,8 @@ export const certificatesAPI = {
   approve: (id) => apiClient.patch(`/certificates/${id}/approve`),
   reject: (id) => apiClient.patch(`/certificates/${id}/reject`),
   delete: (id) => apiClient.delete(`/certificates/${id}`),
-  getStats: () => apiClient.get('/certificates/stats/overview')
+  getStats: () => apiClient.get('/certificates/stats/overview'),
+  verify: (code) => apiClient.get(`/certificates/verify/${encodeURIComponent(code)}`)
 };
 
 // Finance API endpoints

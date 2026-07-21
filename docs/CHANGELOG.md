@@ -5,6 +5,25 @@ Newest entries first. Each entry lists what changed, why, and which files were t
 
 ---
 
+## 2026-07-22 — Certificate verification (QR code)
+
+**Why:** Certificates already print a QR code, but nothing on the system side ever reads it back — there was no way for staff to confirm a certificate someone hands in was actually issued by this office. Scoped to **internal/staff use only** (not a public-facing portal) since the system is Tailscale-only and not reachable from the outside anyway; a public verification page is a separate decision for later.
+
+**How it works:**
+- New page **Verify Certificate** (sidebar, under Records) lets staff type in the code printed under a certificate's QR (or the certificate ID) and see whether it's genuine. Supports scanning the QR directly via the device camera where the browser supports the native `BarcodeDetector` API (no new dependency added).
+- If genuine: shows certificate type, resident, purpose, issue date, status, OR number.
+- If the code matches something that was later deleted: reports that clearly ("deleted on `<date>` by `<name>`") instead of a bare "not found" — reuses the trash_bin data from the trash feature added the day before.
+- If nothing matches at all: reported as not verified.
+
+**Security fix (prerequisite):** the QR code's embedded value was previously `CERT-<timestamp>-<resident_id>` — guessable/constructible without ever seeing a real certificate, which would have made "verification" meaningless. Changed to `CERT-<16 random hex chars>` (`crypto.randomBytes`), looked up only by exact database match.
+
+**Files added:** `frontend/src/pages/VerifyCertificate.jsx`.
+**Files changed:** `backend/controllers/certificatesController.js` (QR generation + new `verifyCertificate` handler), `backend/routes/certificates.js` (`GET /certificates/verify/:code`, registered before the generic `/:id` route), `frontend/src/api/apiClient.js`, `frontend/src/App.jsx`, `frontend/src/components/Sidebar.jsx`, `frontend/src/contexts/ThemeContext.jsx`, `frontend/src/pages/Settings.jsx`, `frontend/src/layouts/AdminLayout.jsx`.
+
+**Bug found and fixed along the way:** `generateCertificate` had the same `const [result] = await pool.query(INSERT...)` destructuring bug flagged in the trash feature entry below — `result` was actually the empty/`RETURNING id` rows array, not the `resultInfo` object, so the API response's `certificate.id` field was silently `undefined` on every single certificate generation (dropped entirely from the JSON response, since `JSON.stringify` omits `undefined` values). Confirmed via direct testing. No visible symptom in the current UI because the frontend doesn't read that field back — but it would have broken any future feature (like this one, initially) that needs the newly-created certificate's ID from the generate response. Fixed to `const [, result] = await pool.query(...)`. **Still not checked:** whether `approveCertificate`/`rejectCertificate` have the same bug — that remains an open item from the previous entry.
+
+---
+
 ## 2026-07-22 — Trash / recycle bin feature
 
 **Why:** Directly motivated by the certificate-deletion incident on 2026-07-20 — deletions were permanent with no recovery path. Adds a soft-delete system: normal users' deletions are recoverable, and only admin can truly purge data.
