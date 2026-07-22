@@ -271,9 +271,11 @@ function ChequePreview({ details, layout, scale = 1 }) {
         <div style={pre({ fontSize:pt(7.5) })}>ORDER OF</div>
       </div>
 
-      {/* Payee line */}
+      {/* Payee line — follows f.payee.top so it moves together with the
+          text (same "locked together" pattern used for the date boxes),
+          instead of drifting apart as an independently-fixed position. */}
       <div style={{
-        position:'absolute', top:'37%', left:`${W*0.16}px`, right:`${W*0.33}px`,
+        position:'absolute', top:`${f.payee.top + 3}%`, left:`${W*0.16}px`, right:`${W*0.33}px`,
         borderBottom:`${pt(0.5)}px solid ${lgray}`,
       }}/>
       {/* Payee value */}
@@ -285,8 +287,10 @@ function ChequePreview({ details, layout, scale = 1 }) {
         {details.payee || <span style={{color:'#ddd',fontStyle:'italic',fontWeight:'400',fontFamily:'Arial'}}>Payee Name</span>}
       </div>
 
-      {/* P label + Amount box (fixed pre-printed frame) */}
-      <div style={{ position:'absolute', top:'29%', left:`${W*0.64}px` }}>
+      {/* P label + Amount box — follows f.amountNum.top/left so the box
+          moves together with the amount text instead of staying fixed
+          while the text is tuned away from it. */}
+      <div style={{ position:'absolute', top:`${f.amountNum.top - 5}%`, left:`${f.amountNum.left - 3}%` }}>
         <div style={pre({ fontSize:pt(8) })}>P</div>
         <div style={{
           border:`${pt(0.8)}px solid ${lgray}`, marginTop:pt(2),
@@ -308,9 +312,9 @@ function ChequePreview({ details, layout, scale = 1 }) {
       <div style={{ position:'absolute', top:'42%', left:`${pt(20)}px`, ...pre({ fontSize:pt(7.5) }) }}>
         PESOS
       </div>
-      {/* Pesos line */}
+      {/* Pesos line — follows f.amountWords.top, same reasoning as the payee line */}
       <div style={{
-        position:'absolute', top:'47%', left:`${W*0.08}px`, right:`${W*0.04}px`,
+        position:'absolute', top:`${f.amountWords.top + 2}%`, left:`${W*0.08}px`, right:`${W*0.04}px`,
         borderBottom:`${pt(0.5)}px solid ${lgray}`,
       }}/>
       {/* Amount in words value */}
@@ -363,9 +367,11 @@ function ChequePreview({ details, layout, scale = 1 }) {
       {/* ── Two signature boxes (center-right of lower section) ──
           Measured off the physical cheque: each box 4.5cm wide × 1cm tall,
           0.5cm gap between them (=> 22.15% / 13.1% / 2.46% of an 8"×3" cheque). */}
-      {/* Sig box 1 */}
+      {/* Sig box 1 — follows f.signer1.top/left, same "moves with the data"
+          pattern as the date boxes, so tuning the signatory position keeps
+          the reference box lined up with it instead of leaving it behind. */}
       <div style={{
-        position:'absolute', top:'60%', left:`${W*0.35}px`,
+        position:'absolute', top:`${f.signer1.top - 18}%`, left:`${f.signer1.left}%`,
         width:`${W*0.2215}px`, height:`${H*0.131}px`,
         border:`${pt(0.5)}px solid ${lgray}`,
       }}/>
@@ -379,9 +385,9 @@ function ChequePreview({ details, layout, scale = 1 }) {
         {details.signer1Title && <div style={{fontSize:pt(6.5),fontWeight:'400',color:'#444'}}>{details.signer1Title}</div>}
       </div>
 
-      {/* Sig box 2 — left = box1 left + box width + 0.5cm gap */}
+      {/* Sig box 2 — follows f.signer2.top/left the same way */}
       <div style={{
-        position:'absolute', top:'60%', left:`${W*0.596}px`,
+        position:'absolute', top:`${f.signer2.top - 18}%`, left:`${f.signer2.left}%`,
         width:`${W*0.2215}px`, height:`${H*0.131}px`,
         border:`${pt(0.5)}px solid ${lgray}`,
       }}/>
@@ -1000,7 +1006,7 @@ export default function ChequePrint() {
               <Info size={15} className="flex-shrink-0 mt-0.5"/>
               <div>
                 <p className="font-semibold">Fine-tune alignment</p>
-                <p className="text-xs mt-0.5">Print a test page on plain paper, lay it over the blank cheque, hold up to light. Adjust by 0.5% at a time. Save when aligned.</p>
+                <p className="text-xs mt-0.5">Print a test page on plain paper, lay it over the blank cheque, hold up to light. Adjust by 0.5% at a time. Save when aligned. Moving Payee, Amount, or a Signatory also moves its printed line/box in the preview, so they stay lined up with each other.</p>
               </div>
             </div>
             <div className="card p-5 space-y-3">

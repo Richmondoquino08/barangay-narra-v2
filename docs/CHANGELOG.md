@@ -5,6 +5,16 @@ Newest entries first. Each entry lists what changed, why, and which files were t
 
 ---
 
+## 2026-07-22 — Cheque preview: all reference lines/boxes now move with their field
+
+**Why:** Following up on the date-box fix above — same idea extended to every other field. Previously only the date boxes moved together with their digits; the payee underline, amount box, "PESOS" underline, and the two signature boxes were all independently fixed positions that a Layout Editor adjustment could leave behind, making the preview inconsistent once anyone actually tuned a field.
+
+**What changed:** each pre-printed reference element's position is now computed as an offset from its data field instead of a separate hardcoded number — payee line = `f.payee.top + 3`, amount box = `f.amountNum.top - 5` (and `left - 3`), pesos line = `f.amountWords.top + 2`, signature boxes = `f.signer1/2.top - 18` (and matching `left`). All offsets were derived from the previous fixed values, so the defaults render identically to before — this only changes what happens when a field is *moved*: its line/box now moves with it.
+
+**Files changed:** `frontend/src/pages/ChequePrint.jsx`.
+
+---
+
 ## 2026-07-22 — Cheque print preview: date digits floating off their boxes, amount box overlapping PESOS
 
 **Why:** After the calibration fix above, a screenshot of the actual preview showed two more real bugs — the typed date digits (e.g. "07222026") rendered floating above and to the side of their pre-printed boxes instead of inside them, and the amount box was tall enough to visually overlap the "PESOS" label and "Amount in words" line below it.
