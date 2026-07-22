@@ -14,7 +14,7 @@ function appendHistory(entry) {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(hist.slice(0, 200)));
 }
 
-const LS_KEY = 'lbp_cheque_layout_v4';
+const LS_KEY = 'lbp_cheque_layout_v5'; // bumped: 8x3in size + dateSpacing replace v4's 8.5x3.5in + hardcoded offsets
 
 function amountToWords(num) {
   const n = parseFloat(num);
@@ -53,24 +53,55 @@ function parseDateForCheque(dateStr) {
 }
 
 // ── Only the fields the user needs to fill (everything else is pre-printed) ──
-// Cheque: 8.5" wide × 3.5" tall (landscape)
+// Cheque: 8" wide × 3" tall (landscape) — measured directly off the physical
+// Landbank cheque, not the generic 8.5×3.5 checkbook standard.
 const DEFAULT_LAYOUT = {
-  chequeWidth:  8.5,
-  chequeHeight: 3.5,
+  chequeWidth:  8,
+  chequeHeight: 3,
+  // Date digit box spacing, in points (1/72in) — the "hard to set up" part:
+  // now tunable instead of a hardcoded offset table. boxWidth = width of one
+  // MM/DD/YYYY digit box; digitGap = gap between two digits in the same
+  // group (e.g. the two M's); groupGap = the wider gap where a "/" sits
+  // between groups; boxHeight = visual height of the pre-printed box.
+  dateSpacing: { boxWidth: 13, digitGap: 1.5, groupGap: 7, boxHeight: 20 },
   fields: {
     date:        { top: 18, left: 67, fontSize: 9,  bold: false, label: 'Date' },
     payee:       { top: 34, left: 18, fontSize: 11, bold: true,  label: 'Payee Name' },
     amountNum:   { top: 32, left: 67, fontSize: 11, bold: true,  label: 'Amount (numbers)' },
     amountWords: { top: 45, left:  9, fontSize: 10, bold: false, label: 'Amount in Words' },
-    signer1:     { top: 78, left: 36, fontSize: 8,  bold: true,  label: 'Signatory 1' },
-    signer2:     { top: 78, left: 59, fontSize: 8,  bold: true,  label: 'Signatory 2' },
+    signer1:     { top: 78, left: 35, fontSize: 8,  bold: true,  label: 'Signatory 1' },
+    signer2:     { top: 78, left: 60, fontSize: 8,  bold: true,  label: 'Signatory 2' },
   }
 };
+
+// Turns dateSpacing into 8 left-offsets (points, from the first box) for the
+// M M D D Y Y Y Y digits. Shared by the on-screen preview and the print
+// output so both always agree on exactly where each digit lands.
+function computeDateOffsets({ boxWidth, digitGap, groupGap }) {
+  const groupSizes = [2, 2, 4]; // MM, DD, YYYY
+  const offsets = [];
+  let pos = 0, first = true;
+  for (const size of groupSizes) {
+    for (let i = 0; i < size; i++) {
+      if (!first) pos += boxWidth + (i === 0 ? groupGap : digitGap);
+      offsets.push(pos);
+      first = false;
+    }
+  }
+  return offsets;
+}
 
 function loadLayout() {
   try {
     const s = localStorage.getItem(LS_KEY);
-    if (s) { const p=JSON.parse(s); return { ...DEFAULT_LAYOUT,...p,fields:{...DEFAULT_LAYOUT.fields,...p.fields} }; }
+    if (s) {
+      const p = JSON.parse(s);
+      return {
+        ...DEFAULT_LAYOUT, ...p,
+        fields:      { ...DEFAULT_LAYOUT.fields,      ...p.fields },
+        dateSpacing: { ...DEFAULT_LAYOUT.dateSpacing, ...p.dateSpacing },
+      };
+    }
   } catch(_) {}
   return DEFAULT_LAYOUT;
 }
@@ -79,8 +110,21 @@ function loadLayout() {
 function ChequePreview({ details, layout, scale = 1 }) {
   const W = layout.chequeWidth  * 96 * scale;
   const H = layout.chequeHeight * 96 * scale;
+  // `pt()` here is a cosmetic pixel unit for the pre-printed mockup
+  // decoration only (labels, dividers, barcode, logo...) — none of that is
+  // ever actually printed, so it's fine for these to just be "whatever looks
+  // right on screen." `ptTrue()` is different: it's used for the values that
+  // are ALSO sent to the print output as literal "Npt" CSS (font sizes for
+  // typed-in data, and the date-box geometry) — those must convert real
+  // points (1/72in) to CSS px (96dpi) or the preview and the physical
+  // printout disagree on size, which is what was actually causing prints to
+  // land in the wrong place even when the on-screen preview looked aligned.
   const pt = v => v * scale;
+  const ptTrue = v => v * (96 / 72) * scale;
+  const ptToPctW = v => (v / 72 / layout.chequeWidth)  * 100; // pt -> % of cheque width
+  const ptToPctH = v => (v / 72 / layout.chequeHeight) * 100; // pt -> % of cheque height
   const f = layout.fields;
+  const dateOffsetsPt = computeDateOffsets(layout.dateSpacing);
 
   const gray   = '#aaa';
   const lgray  = '#ccc';
@@ -171,44 +215,54 @@ function ChequePreview({ details, layout, scale = 1 }) {
       </div>
 
       {/* DATE label + boxes (top right, below divider) */}
-      {/* DATE boxes — pre-printed decoration only (fixed position, no digits here) */}
+      {/* DATE boxes — pre-printed decoration only (fixed position, no digits here).
+          Positioned with the exact same offsets as the digit overlay below, so
+          the two always line up regardless of dateSpacing tuning. */}
       <div style={{ position:'absolute', top:'21%', left:`${W*0.63}px` }}>
         <div style={pre({ fontSize:pt(7) })}>DATE</div>
-        <div style={{ display:'flex', gap:pt(1), marginTop:pt(2) }}>
-          {['M','M','/','D','D','/','Y','Y','Y','Y'].map((ch,i)=>(
-            ch==='/' ? (
-              <div key={i} style={{ width:pt(4), textAlign:'center', ...pre({ fontSize:pt(8) }) }}>/</div>
-            ) : (
-              <div key={i} style={{
-                width:pt(10), height:pt(14), border:`${pt(0.5)}px solid ${lgray}`,
-                background:'#fff',
-              }}/>
-            )
+        <div style={{ position:'relative', marginTop:pt(2), height:ptTrue(layout.dateSpacing.boxHeight) }}>
+          {dateOffsetsPt.map((offsetPt, i) => (
+            <div key={i} style={{
+              position:'absolute', left:ptTrue(offsetPt), top:0,
+              width:ptTrue(layout.dateSpacing.boxWidth), height:ptTrue(layout.dateSpacing.boxHeight),
+              border:`${pt(0.5)}px solid ${lgray}`, background:'#fff',
+            }}/>
           ))}
+          {/* "/" separators, centered in the gap between MM|DD and DD|YYYY */}
+          {[1, 3].map(afterIdx => {
+            const gapCenterPt = dateOffsetsPt[afterIdx] + layout.dateSpacing.boxWidth
+              + layout.dateSpacing.groupGap / 2;
+            return (
+              <div key={afterIdx} style={{
+                position:'absolute', left:ptTrue(gapCenterPt), top:0,
+                height:ptTrue(layout.dateSpacing.boxHeight),
+                display:'flex', alignItems:'center', transform:'translateX(-50%)',
+                ...pre({ fontSize:pt(8) }),
+              }}>/</div>
+            );
+          })}
         </div>
       </div>
 
-      {/* DATE digits — positioned via layout fields so Layout Editor can move them */}
+      {/* DATE digits — positioned via layout fields + dateSpacing so the
+          Layout Editor can move and resize them to match the physical cheque */}
       {(() => {
         const parsed = parseDateForCheque(details.date);
         if (!parsed) return null;
         const { mm, dd, yyyy } = parsed;
         const digits = [mm[0], mm[1], dd[0], dd[1], yyyy[0], yyyy[1], yyyy[2], yyyy[3]];
-        // Box offsets in pt; convert to % of cheque width (W px = chequeWidth * 96 * scale px)
-        const lefts  = [0, 11, 26, 37, 52, 63, 74, 85];
-        const W_96   = layout.chequeWidth * 96; // pixels at scale=1
         return digits.map((digit, i) => {
-          const leftPct = f.date.left + (lefts[i] / W_96 * 100);
+          const leftPct = f.date.left + ptToPctW(dateOffsetsPt[i]);
           return (
             <div key={i} style={{
               position:'absolute',
               top:`${f.date.top}%`,
               left:`${leftPct}%`,
-              width:`${10 / W_96 * 100}%`,
-              height:`${14 / (layout.chequeHeight * 96) * 100}%`,
+              width:`${ptToPctW(layout.dateSpacing.boxWidth)}%`,
+              height:`${ptToPctH(layout.dateSpacing.boxHeight)}%`,
               display:'flex', alignItems:'center', justifyContent:'center',
               fontFamily: MATRIX_FONT,
-              fontSize: pt(f.date.fontSize),
+              fontSize: ptTrue(f.date.fontSize),
               fontWeight: '700', color: '#000',
             }}>
               {digit}
@@ -231,7 +285,7 @@ function ChequePreview({ details, layout, scale = 1 }) {
       {/* Payee value */}
       <div style={{
         position:'absolute', top:`${f.payee.top}%`, left:`${f.payee.left}%`,
-        fontSize:pt(f.payee.fontSize), fontWeight:f.payee.bold?'700':'400',
+        fontSize:ptTrue(f.payee.fontSize), fontWeight:f.payee.bold?'700':'400',
         ...data({ whiteSpace:'nowrap' }),
       }}>
         {details.payee || <span style={{color:'#ddd',fontStyle:'italic',fontWeight:'400',fontFamily:'Arial'}}>Payee Name</span>}
@@ -242,14 +296,15 @@ function ChequePreview({ details, layout, scale = 1 }) {
         <div style={pre({ fontSize:pt(8) })}>P</div>
         <div style={{
           border:`${pt(0.8)}px solid ${lgray}`, marginTop:pt(2),
-          width:`${W*0.27}px`, height:`${H*0.15}px`,
+          width:`${W*0.246}px`, // 5cm measured width
+          height:`${H*0.15}px`,
           background:'#fff',
         }}/>
       </div>
       {/* Amount number value */}
       <div style={{
         position:'absolute', top:`${f.amountNum.top}%`, left:`${f.amountNum.left}%`,
-        fontSize:pt(f.amountNum.fontSize), fontWeight:f.amountNum.bold?'700':'400',
+        fontSize:ptTrue(f.amountNum.fontSize), fontWeight:f.amountNum.bold?'700':'400',
         ...data({ whiteSpace:'nowrap' }),
       }}>
         {amtNum || <span style={{color:'#ddd',fontStyle:'italic',fontWeight:'400',fontFamily:'Arial'}}>0.00</span>}
@@ -267,7 +322,7 @@ function ChequePreview({ details, layout, scale = 1 }) {
       {/* Amount in words value */}
       <div style={{
         position:'absolute', top:`${f.amountWords.top}%`, left:`${f.amountWords.left}%`,
-        fontSize:pt(f.amountWords.fontSize), fontWeight:f.amountWords.bold?'700':'400',
+        fontSize:ptTrue(f.amountWords.fontSize), fontWeight:f.amountWords.bold?'700':'400',
         ...data({ maxWidth:'68%', wordBreak:'break-word', lineHeight:1.3 }),
       }}>
         {amtWords || <span style={{color:'#ddd',fontStyle:'italic',fontFamily:'Arial'}}>Amount in words</span>}
@@ -285,7 +340,7 @@ function ChequePreview({ details, layout, scale = 1 }) {
       {(details.memo) && (
         <div style={{
           position:'absolute', top:`${f.memo.top}%`, left:`${f.memo.left}%`,
-          fontSize:pt(f.memo.fontSize), color:'#000', whiteSpace:'nowrap',
+          fontSize:ptTrue(f.memo.fontSize), color:'#000', whiteSpace:'nowrap',
         }}>
           {details.memo}
         </div>
@@ -311,37 +366,39 @@ function ChequePreview({ details, layout, scale = 1 }) {
         </div>
       </div>
 
-      {/* ── Two signature boxes (center-right of lower section) ── */}
+      {/* ── Two signature boxes (center-right of lower section) ──
+          Measured off the physical cheque: each box 4.5cm wide × 1cm tall,
+          0.5cm gap between them (=> 22.15% / 13.1% / 2.46% of an 8"×3" cheque). */}
       {/* Sig box 1 */}
       <div style={{
         position:'absolute', top:'60%', left:`${W*0.35}px`,
-        width:`${W*0.20}px`, height:`${H*0.20}px`,
+        width:`${W*0.2215}px`, height:`${H*0.131}px`,
         border:`${pt(0.5)}px solid ${lgray}`,
       }}/>
       {/* Sig 1 name (printed) */}
       <div style={{
         position:'absolute', top:`${f.signer1.top}%`, left:`${f.signer1.left}%`,
-        fontSize:pt(f.signer1.fontSize), fontWeight:'700',
-        ...data({ minWidth:`${W*0.18}px`, textAlign:'center' }),
+        fontSize:ptTrue(f.signer1.fontSize), fontWeight:'700',
+        ...data({ minWidth:`${W*0.2215}px`, textAlign:'center' }),
       }}>
         {details.signer1Name || <span style={{color:lgray,fontWeight:'400',fontStyle:'italic',fontFamily:'Arial',fontSize:pt(7)}}>Signatory 1</span>}
-        {details.signer1Title && <div style={{fontSize:pt(6.5*scale),fontWeight:'400',color:'#444'}}>{details.signer1Title}</div>}
+        {details.signer1Title && <div style={{fontSize:pt(6.5),fontWeight:'400',color:'#444'}}>{details.signer1Title}</div>}
       </div>
 
-      {/* Sig box 2 */}
+      {/* Sig box 2 — left = box1 left + box width + 0.5cm gap */}
       <div style={{
-        position:'absolute', top:'60%', left:`${W*0.58}px`,
-        width:`${W*0.20}px`, height:`${H*0.20}px`,
+        position:'absolute', top:'60%', left:`${W*0.596}px`,
+        width:`${W*0.2215}px`, height:`${H*0.131}px`,
         border:`${pt(0.5)}px solid ${lgray}`,
       }}/>
       {/* Sig 2 name (printed) */}
       <div style={{
         position:'absolute', top:`${f.signer2.top}%`, left:`${f.signer2.left}%`,
-        fontSize:pt(f.signer2.fontSize), fontWeight:'700',
-        ...data({ minWidth:`${W*0.18}px`, textAlign:'center' }),
+        fontSize:ptTrue(f.signer2.fontSize), fontWeight:'700',
+        ...data({ minWidth:`${W*0.2215}px`, textAlign:'center' }),
       }}>
         {details.signer2Name || <span style={{color:lgray,fontWeight:'400',fontStyle:'italic',fontFamily:'Arial',fontSize:pt(7)}}>Signatory 2</span>}
-        {details.signer2Title && <div style={{fontSize:pt(6.5*scale),fontWeight:'400',color:'#444'}}>{details.signer2Title}</div>}
+        {details.signer2Title && <div style={{fontSize:pt(6.5),fontWeight:'400',color:'#444'}}>{details.signer2Title}</div>}
       </div>
 
       {/* ── MICR strip ── */}
@@ -518,6 +575,9 @@ export default function ChequePrint() {
   function updateField(fk,prop,val) {
     setLayout(p=>({...p,fields:{...p.fields,[fk]:{...p.fields[fk],[prop]:val}}}));
   }
+  function updateDateSpacing(prop,val) {
+    setLayout(p=>({...p,dateSpacing:{...p.dateSpacing,[prop]:val}}));
+  }
 
   const isReady = () => details.payee.trim() && details.amount && parseFloat(details.amount)>0;
 
@@ -539,17 +599,18 @@ export default function ChequePrint() {
       `position:absolute;top:${toIn(field.top,H)}in;left:${toIn(field.left,W)}in;` +
       `font-size:${field.fontSize}pt;font-weight:${field.bold?'700':'400'};font-family:${MF};${extra}`;
 
-    // Date digits — each placed in its exact box using inch offsets
-    // Box offsets (pt): M1=0, M2=11, D1=26, D2=37, Y1=52, Y2=63, Y3=74, Y4=85
+    // Date digits — each placed in its exact box using inch offsets, driven
+    // by the same tunable dateSpacing (boxWidth/digitGap/groupGap) the
+    // Layout Editor and preview use, instead of a hardcoded offset table.
     const dateHtml = (() => {
       const parsed = parseDateForCheque(details.date);
       if (!parsed) return '';
       const { mm, dd, yyyy } = parsed;
       const digits    = [mm[0], mm[1], dd[0], dd[1], yyyy[0], yyyy[1], yyyy[2], yyyy[3]];
-      const offsetsPt = [0, 11, 26, 37, 52, 63, 74, 85]; // pt from first box
+      const offsetsPt = computeDateOffsets(layout.dateSpacing); // pt from first box
       const baseLeft  = (f.date.left / 100) * W;          // inches
       const topIn     = toIn(f.date.top, H);
-      const boxWIn    = (10 / 72).toFixed(5);              // 10pt → inches
+      const boxWIn    = (layout.dateSpacing.boxWidth / 72).toFixed(5); // pt -> inches
       return digits.map((d, i) => {
         const leftIn = (baseLeft + offsetsPt[i] / 72).toFixed(5);
         return `<div style="position:absolute;top:${topIn}in;left:${leftIn}in;` +
@@ -844,7 +905,7 @@ export default function ChequePrint() {
               <div className="sm:col-span-2 flex items-end">
                 <div className="bg-gray-50 dark:bg-[#22263a] rounded-xl px-4 py-2.5 text-xs text-gray-500 dark:text-slate-400 w-full">
                   <p className="font-semibold text-gray-700 dark:text-slate-300 mb-1">Landbank Government Cheque</p>
-                  <p>Standard size: 8.5" × 3.5"</p>
+                  <p>Standard size: 8" × 3" (measured off the physical Landbank cheque)</p>
                 </div>
               </div>
             </div>
@@ -946,6 +1007,37 @@ export default function ChequePrint() {
               <div>
                 <p className="font-semibold">Fine-tune alignment</p>
                 <p className="text-xs mt-0.5">Print a test page on plain paper, lay it over the blank cheque, hold up to light. Adjust by 0.5% at a time. Save when aligned.</p>
+              </div>
+            </div>
+            <div className="card p-5 space-y-3">
+              <h3 className="font-semibold text-sm text-gray-800 dark:text-slate-100">Date Digit Spacing</h3>
+              <p className="text-xs text-gray-400 dark:text-slate-500 -mt-1">
+                Controls the gap between the M M / D D / Y Y Y Y boxes — the part that's normally hardest to line up. All values in points (1pt = 1/72 in).
+              </p>
+              <div className="bg-gray-50 dark:bg-[#22263a] rounded-xl p-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { key:'boxWidth',  label:'Box Width'  },
+                  { key:'digitGap',  label:'Digit Gap'  },
+                  { key:'groupGap',  label:'Group Gap ( / )' },
+                  { key:'boxHeight', label:'Box Height' },
+                ].map(({key,label}) => (
+                  <div key={key}>
+                    <p className="text-[10px] text-gray-400 dark:text-slate-500 mb-1">{label}</p>
+                    <div className="flex items-center gap-0.5">
+                      <button type="button" onClick={()=>updateDateSpacing(key, Math.max(0, Math.round((layout.dateSpacing[key]-0.5)*10)/10))}
+                        className="w-6 h-6 rounded bg-gray-200 dark:bg-[#1a1d27] hover:bg-gray-300 flex items-center justify-center text-gray-600 dark:text-slate-300">
+                        <Minus size={9}/>
+                      </button>
+                      <input type="number" value={layout.dateSpacing[key]} step={0.5}
+                        onChange={e=>updateDateSpacing(key, parseFloat(e.target.value)||0)}
+                        className="w-14 text-center text-xs border border-gray-200 dark:border-[#2e334a] rounded py-0.5 bg-white dark:bg-[#1a1d27] text-gray-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400"/>
+                      <button type="button" onClick={()=>updateDateSpacing(key, Math.round((layout.dateSpacing[key]+0.5)*10)/10)}
+                        className="w-6 h-6 rounded bg-gray-200 dark:bg-[#1a1d27] hover:bg-gray-300 flex items-center justify-center text-gray-600 dark:text-slate-300">
+                        <Plus size={9}/>
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
             <div className="card p-5 space-y-3">

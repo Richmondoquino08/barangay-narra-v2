@@ -5,6 +5,24 @@ Newest entries first. Each entry lists what changed, why, and which files were t
 
 ---
 
+## 2026-07-22 — Cheque print calibration: correct size + a real units bug
+
+**Why:** Reported as "the printed cheque doesn't match the actual cheque," with a photo of the physical Landbank cheque annotated with measurements (8"×3" overall, not the 8.5"×3.5" the system assumed; date box row 4.5cm wide; amount box 5cm wide; two signature boxes 4.5cm wide × 1cm tall with a 0.5cm gap between them).
+
+**Root cause #1 — wrong physical size:** `DEFAULT_LAYOUT` assumed a generic 8.5"×3.5" checkbook cheque. The actual cheque is 8"×3". Every position on the page is computed as a percentage of these dimensions, so this alone was enough to throw off every field.
+
+**Root cause #2 — preview and print used different units for the same numbers, silently.** This is the more important one: a value like `fontSize: 11` or a box-offset of `13` meant "11/13 CSS pixels" in the on-screen preview but "11/13 points (1/72 inch)" in the actual print output — a fixed ~33% size difference between what you saw on screen and what came out of the printer, for every field position and font size. Fixed by adding a `ptTrue()` conversion (real points → CSS pixels) used specifically for the values that are shared between preview and print (field font sizes, date-box geometry) — verified numerically afterward that preview and print positions now agree to the sub-thousandth of an inch. Purely cosmetic mockup elements (labels, dividers, the barcode graphic — none of which are ever actually printed) were deliberately left on the old scale-only unit, so the preview's overall look doesn't change.
+
+**Date box spacing is now tunable** instead of a hardcoded offset table (`[0, 11, 26, 37, 52, 63, 74, 85]`) — this was flagged as "the one that's hard to set up." New **Date Digit Spacing** panel in the Layout Editor tab exposes 4 numbers: Box Width, Digit Gap (between two digits in the same group, e.g. the two M's), Group Gap (the wider gap where a "/" sits), and Box Height — all in points. Both the preview and the print output are driven by the same `computeDateOffsets()` function, so a change here is guaranteed to apply identically to both.
+
+**Applied the provided measurements:** amount box width (5cm → 24.6% of the new 8" width, was 27%), the two signature boxes (4.5cm wide × 1cm tall each, 0.5cm gap → 22.15% / 13.1% / 2.46%, was 20%/20%/23%-gap), and default date-box spacing scaled to land within 0.1cm of the measured 4.5cm total width.
+
+**Not fixed / needs verification:** two vertical distance annotations on the photo ("1.2cm" near the check number, "2.1cm" near the bottom) had an ambiguous reference point I couldn't confidently place from the photo alone — left the existing top-position defaults unchanged rather than guess. Recommend the usual light-table calibration (print on plain paper, hold over the real cheque, nudge Top%/Left% in the Layout Editor) for final positioning — but that process should now actually work, since preview and print no longer disagree on scale.
+
+**Files changed:** `frontend/src/pages/ChequePrint.jsx`. Also bumped the layout's localStorage key (`v4` → `v5`) so anyone with a previously-saved layout gets the corrected defaults instead of the stale 8.5×3.5in ones.
+
+---
+
 ## 2026-07-22 — Bug fix: garbled peso signs and special characters (mojibake) across the app
 
 **Why:** Reported as "why does the peso sign show as â‚±150,000.00 on Projects" — a screenshot of the Projects page's Total Budget tile. Investigation found this wasn't a display/rendering issue but literal corrupted bytes committed into the source code: several special characters (₱ peso, — em dash, – en dash, … ellipsis, − minus sign, · middle dot, plus a few emoji like ⚠️/✏️ and the ✓/× symbols) had been saved somewhere along the way as UTF-8 text that was first misread as Windows-1252 and re-saved — the classic "mojibake" double-encoding bug. Once corrupted this way, no browser or font can display it correctly; the actual character in the file is wrong.
