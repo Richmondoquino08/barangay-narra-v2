@@ -82,7 +82,7 @@ export default function Sidebar({ isOpen, onToggle, isMobile = false, onClose })
   const isActive = path => location.pathname === path ||
     (path !== '/dashboard' && !path.endsWith('-dashboard') && location.pathname.startsWith(path));
 
-  const roleColors = { admin:'#6366f1', secretary:'#10b981', captain:'#3b82f6', treasurer:'#f59e0b' };
+  const roleColors = { admin:'#6366f1', secretary:'#10b981', captain:'#3b82f6', treasurer:'#f59e0b', intern:'#f43f5e' };
   const roleColor  = roleColors[user?.role] || '#6366f1';
 
   const visible = menuItems.filter(item => {

@@ -50,6 +50,7 @@ const variants = {
   secretary:            { bg:'rgba(59,130,246,0.12)',  text:'#1d4ed8', dot:'#3b82f6', border:'rgba(59,130,246,0.25)' },
   captain:              { bg:'rgba(99,102,241,0.12)',  text:'#4338ca', dot:'#6366f1', border:'rgba(99,102,241,0.25)' },
   treasurer:            { bg:'rgba(20,184,166,0.12)',  text:'#0f766e', dot:'#14b8a6', border:'rgba(20,184,166,0.25)' },
+  intern:               { bg:'rgba(244,63,94,0.12)',   text:'#be123c', dot:'#f43f5e', border:'rgba(244,63,94,0.25)'  },
 
   // Generic
   active:               { bg:'rgba(16,185,129,0.12)',  text:'#047857', dot:'#10b981', border:'rgba(16,185,129,0.25)' },

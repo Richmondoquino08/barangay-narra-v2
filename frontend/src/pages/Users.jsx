@@ -1,28 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { usersAPI } from '../api/apiClient';
+import { usersAPI, residentsAPI } from '../api/apiClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/Toast';
 import Modal from '../components/Modal';
 import Badge from '../components/Badge';
+import ResidentSearch from '../components/ResidentSearch';
 import { Users as UsersIcon, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, KeyRound, Eye, EyeOff } from 'lucide-react';
 
-const ROLES = ['admin','secretary','captain','treasurer'];
+const ROLES = ['admin','secretary','captain','treasurer','intern'];
 
 export default function Users() {
   const { user: me } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState([]);
+  const [residents, setResidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);       // null | 'create' | {user}
   const [passModal, setPassModal] = useState(null); // null | {id, name}
   const [saving, setSaving] = useState(false);
   const [showPass, setShowPass] = useState(false);
-  const [form, setForm] = useState({ full_name:'', email:'', password:'', role:'secretary' });
+  const [form, setForm] = useState({ full_name:'', email:'', password:'', role:'secretary', resident_id:'' });
   const [newPass, setNewPass] = useState('');
 
   const load = async () => {
     setLoading(true);
-    try { const res = await usersAPI.getAll(); setUsers(res.data.users || []); }
+    try {
+      const [usersRes, residentsRes] = await Promise.all([
+        usersAPI.getAll(),
+        residentsAPI.getAll(1, 500),
+      ]);
+      setUsers(usersRes.data.users || []);
+      setResidents(residentsRes.data.residents || []);
+    }
     catch { toast('Failed to load users', 'error'); }
     finally { setLoading(false); }
   };
@@ -31,13 +40,17 @@ export default function Users() {
 
   async function handleSave(e) {
     e.preventDefault();
+    if (form.role !== 'admin' && !form.resident_id) {
+      return toast('Select the resident this account belongs to', 'error');
+    }
     setSaving(true);
     try {
+      const payload = { full_name: form.full_name, email: form.email, role: form.role, resident_id: form.resident_id || null };
       if (modal?.id) {
-        await usersAPI.update(modal.id, { full_name: form.full_name, email: form.email, role: form.role });
+        await usersAPI.update(modal.id, payload);
         toast('User updated', 'success');
       } else {
-        await usersAPI.create(form);
+        await usersAPI.create({ ...payload, password: form.password });
         toast('User created', 'success');
       }
       setModal(null); load();
@@ -62,8 +75,8 @@ export default function Users() {
     catch { toast('Reset failed', 'error'); }
   }
 
-  const openCreate = () => { setForm({ full_name:'', email:'', password:'', role:'secretary' }); setModal('create'); };
-  const openEdit   = u => { setForm({ full_name: u.full_name, email: u.email, password:'', role: u.role }); setModal(u); };
+  const openCreate = () => { setForm({ full_name:'', email:'', password:'', role:'secretary', resident_id:'' }); setModal('create'); };
+  const openEdit   = u => { setForm({ full_name: u.full_name, email: u.email, password:'', role: u.role, resident_id: u.resident_id || '' }); setModal(u); };
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
@@ -143,7 +156,7 @@ export default function Users() {
           )}
           <div>
             <label className="label">Role *</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {ROLES.map(r => (
                 <button key={r} type="button" onClick={() => setForm(p=>({...p,role:r}))}
                   className={`py-2 rounded-xl text-sm font-medium border-2 capitalize transition
@@ -153,6 +166,21 @@ export default function Users() {
               ))}
             </div>
           </div>
+
+          {form.role !== 'admin' && (
+            <ResidentSearch
+              label="Resident *"
+              placeholder="Search resident by name or contact…"
+              residents={residents}
+              value={form.resident_id}
+              onChange={id => {
+                const picked = residents.find(r => String(r.id) === String(id));
+                setForm(p => ({ ...p, resident_id: id, full_name: picked ? picked.full_name : p.full_name }));
+              }}
+              required
+            />
+          )}
+
           <div className="flex gap-2 justify-end pt-1">
             <button type="button" onClick={() => setModal(null)} className="btn-secondary">Cancel</button>
             <button type="submit" disabled={saving} className="btn-primary">{saving?'Saving...':'Save User'}</button>

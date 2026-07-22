@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const { requireAuth } = require('../middleware/auth');
-const { requireRole } = require('../middleware/roles');
+const { allowRoles: requireRole } = require('../middleware/internGuard');
 const documentController = require('../controllers/documentController');
 
 // Resident document attachments (scanned IDs, certificates, etc.) — restrict

@@ -5,6 +5,29 @@ Newest entries first. Each entry lists what changed, why, and which files were t
 
 ---
 
+## 2026-07-22 — Resident-linked staff accounts, Intern/Guest role, resident-style My Profile
+
+**Why:** Staff accounts should represent real residents of the barangay (except the system admin account, which isn't necessarily a person who lives here), and the office wanted a way to give interns/temporary helpers system access that's view-only by default rather than either full access or none.
+
+**Users are now linked to residents:**
+- New `users.resident_id` column (nullable, unique when set) — every secretary/captain/treasurer/intern account must be linked to an existing resident record; admin accounts don't need one.
+- `POST/PUT /api/users` now requires `resident_id` for any non-admin role, validates the resident exists, and rejects linking a resident that's already tied to another account (409).
+- **The three real officials now have real accounts:** the placeholder logins (Maria Santos/secretary, Ana Cruz/treasurer, Jose Reyes/captain) were renamed and linked to their actual resident records — captain@barangay.gov.ph → ERNESTO DUMALAON DONCILLO (resident #1202), treasurer@barangay.gov.ph → FELIX TAN BALDAD JR. (#180), secretary@barangay.gov.ph → MARYROSE BAYRON OQUIÑO (#459). Emails and passwords unchanged. Migration: `backend/scripts/migrate25.js`.
+- **Data-quality note, not fixed:** resident #1202 (Ernesto) has an exact duplicate at #1870 — same person, imported ~2 seconds apart, no certificates/documents attached to either. #1202 was picked as canonical since it's needed for the account link now. The duplicate at #1870 is still sitting in Residents and should be reviewed/merged manually.
+
+**New "Intern" role — view-only by default:**
+- New role alongside admin/secretary/captain/treasurer, for interns or temporary help. Can always view Residents, Certificates, Blotter, Announcements, Documents, Reports, and the certificate verification page — but cannot create/edit/approve/delete anything **unless** an admin turns on "Intern Write Access" in Settings → Access Control (off by default). This is a single global switch, not per-user.
+- Enforced via a new `backend/middleware/internGuard.js` (`allowRoles`), swapped in as a drop-in replacement for `requireRole` on the route files above (`residents.js`, `certificates.js`, `blotter.js`, `requests.js`, `documents.js`, `announcement.js`). GET requests always pass for interns; everything else checks the new `system_settings.intern_write_access` column live.
+- **Not yet covered:** Finance, procurement, projects, assets, social programs, DRRM, and officials routes still use the old `requireRole` directly, so interns can't see those modules at all yet regardless of the write-access toggle. Extending the same swap to those route files is a straightforward follow-up if interns need visibility there too.
+- Frontend buttons for create/edit/delete are **not** individually hidden for interns when write-access is off — they're still visible, but submitting shows a clear "View-only access" toast from the blocked request. The backend is the actual enforcement boundary.
+
+**My Profile now shows the real resident record for linked accounts:**
+- `frontend/src/pages/Profile.jsx` rebuilt: if the logged-in account has a `resident_id`, it shows the same Personal Information / Certificates / Requests tabbed view as the staff-facing Resident Profile page, sourced live from the residents table — this is what "My Profile" now looks like for secretary/captain/treasurer/intern accounts. Admin (no resident link) still sees the simpler name/email editor from yesterday.
+
+**Bugs found and fixed along the way (same `const [result] = await pool.query(...)` destructuring pattern flagged in the two previous entries):** confirmed and fixed in `usersController.deleteUser` and `usersController.resetPassword` — both had a 404 check on `result.affectedRows` that could never trigger, so deleting a non-existent user or resetting a non-existent user's password silently reported success either way. A grep across `backend/controllers` still shows this pattern in ~11 other spots (blotterController, financeController, requestController, residentController, and one more in certificatesController) — still not individually verified, same open item as before.
+
+---
+
 ## 2026-07-22 — Self-service Profile / Change Password, top-bar redesign
 
 **Why:** No way for a logged-in user to view/edit their own account or change their own password without admin help. The top-right user chip also showed the account's literal `full_name` value ("System Administrator" for the seed admin account) as a two-line name+role card — read as generic/impersonal rather than "this is you."

@@ -323,6 +323,7 @@ export default function Settings() {
   const [rightLogoUrl, setRightLogoUrl] = useState('');
   const [fontSize,     setFontSize]     = useState('medium');
   const [permissions,  setPermissions]  = useState(DEFAULT_ROLE_PERMISSIONS);
+  const [internWriteAccess, setInternWriteAccess] = useState(false);
   const [loading,      setLoading]      = useState(true);
   const [saving,       setSaving]       = useState(false);
   const [activeTab,    setActiveTab]    = useState('general');
@@ -362,6 +363,7 @@ export default function Settings() {
       setLoginBgUrl(d.login_bg_url    || '');
       setRightLogoUrl(d.right_logo_url || '');
       setFontSize(d.font_size      || 'medium');
+      setInternWriteAccess(!!d.intern_write_access);
     })
     .catch(() => toast('Failed to load settings', 'error'))
     .finally(() => setLoading(false));
@@ -384,6 +386,7 @@ export default function Settings() {
         right_logo_url:   rightLogoUrl,
         font_size:        fontSize,
         role_permissions: JSON.stringify(permissions),
+        intern_write_access: internWriteAccess,
       });
       await refreshSettings();
       toast('Settings saved successfully!', 'success');
@@ -897,6 +900,7 @@ export default function Settings() {
             { key: 'captain',   label: 'Captain',   color: 'indigo' },
             { key: 'secretary', label: 'Secretary', color: 'emerald' },
             { key: 'treasurer', label: 'Treasurer', color: 'amber' },
+            { key: 'intern',    label: 'Intern',    color: 'rose' },
           ];
 
           const toggle = (role, moduleKey) => {
@@ -922,6 +926,24 @@ export default function Settings() {
 
           return (
             <div className="space-y-5">
+              <div className="card p-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={16} className="text-rose-500"/>
+                    <div>
+                      <h3 className="font-semibold text-gray-800 dark:text-gray-200">Intern Write Access</h3>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                        Interns can always view the modules below. When <strong>off</strong> (default), they cannot create, edit, approve, or delete anything. Turn <strong>on</strong> to let them edit data too, same as a regular user of that module.
+                      </p>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => setInternWriteAccess(v => !v)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${internWriteAccess ? 'bg-rose-500' : 'bg-gray-300 dark:bg-[#2e334a]'}`}>
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${internWriteAccess ? 'translate-x-6' : 'translate-x-1'}`}/>
+                  </button>
+                </div>
+              </div>
+
               <div className="card p-5">
                 <div className="flex items-center gap-2 mb-1">
                   <ShieldCheck size={16} className="text-indigo-500"/>
@@ -955,7 +977,7 @@ export default function Settings() {
                         <React.Fragment key={group.section}>
                           {/* Section header row */}
                           <tr>
-                            <td colSpan={5} className="pt-4 pb-1">
+                            <td colSpan={6} className="pt-4 pb-1">
                               <span className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500">
                                 {group.section}
                               </span>

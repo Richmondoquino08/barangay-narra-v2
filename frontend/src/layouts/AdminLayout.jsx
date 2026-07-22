@@ -407,7 +407,7 @@ export default function AdminLayout({ children }) {
   const D        = darkMode;
   const initials = user?.full_name?.split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase()||'U';
   const pageTitle= Object.entries(PAGE_TITLES).find(([p])=>location.pathname.startsWith(p))?.[1]||'Dashboard';
-  const roleLbl  = { admin:'Administrator', secretary:'Secretary', captain:'Punong Barangay', treasurer:'Treasurer' };
+  const roleLbl  = { admin:'Administrator', secretary:'Secretary', captain:'Punong Barangay', treasurer:'Treasurer', intern:'Intern' };
 
   useEffect(() => {
     function h(e) {

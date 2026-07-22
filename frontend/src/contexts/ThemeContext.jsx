@@ -22,6 +22,9 @@ export const DEFAULT_ROLE_PERMISSIONS = {
   secretary: ['dashboard','residents','certificates','verify_certificate','blotter','officials','projects','assets','social','bdrrm','announcements','documents','reports','trash','fin_brgy_id','fin_kidlat','fin_trip','fin_pr','fin_ris','fin_transmittal'],
   // Treasurer: full finance suite + cross-cutting reports
   treasurer: ['dashboard','finance','cheque_print','reports','officials','announcements','fin_brgy_id','fin_kidlat','fin_trip','fin_pcf','fin_sppcv','fin_rao','fin_obr','fin_pr','fin_po','fin_iar','fin_ris','fin_dv','fin_crdr','fin_chbr','fin_checks','fin_collections','fin_transmittal'],
+  // Intern/Guest: view-only by default (enforced server-side); same
+  // baseline visibility as secretary's records modules, minus finance.
+  intern: ['dashboard','residents','certificates','verify_certificate','blotter','announcements','documents','reports'],
 };
 
 // Font size map — values in px applied to <html> so all rem units scale proportionally

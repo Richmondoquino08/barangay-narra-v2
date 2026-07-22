@@ -3,7 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const { body, validationResult } = require('express-validator');
 const { requireAuth } = require('../middleware/auth');
-const { requireRole } = require('../middleware/roles');
+const { allowRoles: requireRole } = require('../middleware/internGuard');
 const certificatesController = require('../controllers/certificatesController');
 
 const router = express.Router();

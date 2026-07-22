@@ -11,14 +11,16 @@ router.use(requireAuth);
 const validateUser = [
   body('full_name').optional().isLength({ min: 3 }).withMessage('Full name must be at least 3 characters'),
   body('email').optional().isEmail().withMessage('Valid email is required'),
-  body('role').optional().isIn(['admin', 'secretary', 'captain', 'treasurer']).withMessage('Invalid role')
+  body('role').optional().isIn(['admin', 'secretary', 'captain', 'treasurer', 'intern']).withMessage('Invalid role'),
+  body('resident_id').optional().isInt().withMessage('Invalid resident')
 ];
 
 const validateUserCreate = [
   body('full_name').isLength({ min: 3 }).withMessage('Full name must be at least 3 characters'),
   body('email').isEmail().withMessage('Valid email is required'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-  body('role').isIn(['admin', 'secretary', 'captain', 'treasurer']).withMessage('Invalid role')
+  body('role').isIn(['admin', 'secretary', 'captain', 'treasurer', 'intern']).withMessage('Invalid role'),
+  body('resident_id').optional().isInt().withMessage('Invalid resident')
 ];
 
 const handleValidationErrors = (req, res, next) => {

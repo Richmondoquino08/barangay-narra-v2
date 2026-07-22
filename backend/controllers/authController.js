@@ -4,7 +4,7 @@ const pool = require('../config/db');
 
 const generateToken = (user) => {
   return jwt.sign(
-    { id: user.id, email: user.email, role: user.role, full_name: user.full_name },
+    { id: user.id, email: user.email, role: user.role, full_name: user.full_name, resident_id: user.resident_id || null },
     process.env.JWT_SECRET || 'barangay-secret-key-2024',
     { expiresIn: '7d' }
   );
@@ -19,7 +19,7 @@ exports.login = async (req, res) => {
     }
 
     const [rows] = await pool.query(
-      'SELECT id, full_name, email, password, role, is_active FROM users WHERE email = ?',
+      'SELECT id, full_name, email, password, role, resident_id, is_active FROM users WHERE email = ?',
       [email]
     );
 
@@ -45,7 +45,7 @@ exports.login = async (req, res) => {
       success: true,
       message: 'Login successful',
       token,
-      user: { id: user.id, full_name: user.full_name, email: user.email, role: user.role }
+      user: { id: user.id, full_name: user.full_name, email: user.email, role: user.role, resident_id: user.resident_id || null }
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -56,7 +56,7 @@ exports.login = async (req, res) => {
 exports.getMe = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      'SELECT id, full_name, email, role, created_at, updated_at, last_login FROM users WHERE id = ?',
+      'SELECT id, full_name, email, role, resident_id, created_at, updated_at, last_login FROM users WHERE id = ?',
       [req.user.id]
     );
 

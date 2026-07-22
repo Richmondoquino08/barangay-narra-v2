@@ -18,7 +18,7 @@ async function saveSettings(req, res, next) {
       province, city_municipality, right_logo_url,
       secretary_name, secretary_title, cert_validity,
       treasurer_name, treasurer_title,
-      role_permissions
+      role_permissions, intern_write_access
     } = req.body;
 
     const [existing] = await db.query('SELECT id FROM system_settings LIMIT 1');
@@ -49,6 +49,7 @@ async function saveSettings(req, res, next) {
            treasurer_name             = ?,
            treasurer_title            = ?,
            role_permissions           = ?,
+           intern_write_access        = ?,
            updated_at                 = NOW()
          WHERE id = ?`,
         [
@@ -75,6 +76,7 @@ async function saveSettings(req, res, next) {
           treasurer_name ?? '',
           treasurer_title ?? 'Barangay Treasurer',
           role_permissions ? (typeof role_permissions === 'string' ? role_permissions : JSON.stringify(role_permissions)) : null,
+          intern_write_access ?? false,
           existing[0].id,
         ]
       );

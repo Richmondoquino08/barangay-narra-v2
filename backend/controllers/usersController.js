@@ -9,7 +9,7 @@ exports.getAllUsers = async (req, res) => {
     }
 
     const [users] = await pool.query(
-      'SELECT id, full_name, email, role, is_active, last_login, created_at FROM users ORDER BY created_at DESC'
+      'SELECT id, full_name, email, role, resident_id, is_active, last_login, created_at FROM users ORDER BY created_at DESC'
     );
 
     res.json({ success: true, count: users.length, users });
@@ -28,7 +28,7 @@ exports.getUser = async (req, res) => {
     }
 
     const [users] = await pool.query(
-      'SELECT id, full_name, email, role, is_active, last_login, created_at, updated_at FROM users WHERE id = ?',
+      'SELECT id, full_name, email, role, resident_id, is_active, last_login, created_at, updated_at FROM users WHERE id = ?',
       [id]
     );
 
@@ -49,7 +49,7 @@ exports.createUser = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Only admins can create users' });
     }
 
-    const { full_name, email, password, role } = req.body;
+    const { full_name, email, password, role, resident_id } = req.body;
 
     if (!full_name || !email || !password || !role) {
       return res.status(400).json({ success: false, message: 'Full name, email, password, and role are required' });
@@ -57,6 +57,23 @@ exports.createUser = async (req, res) => {
 
     if (password.length < 6) {
       return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+    }
+
+    // Every account except admin must be linked to an actual resident of the
+    // barangay — staff accounts represent real people who live here.
+    if (role !== 'admin' && !resident_id) {
+      return res.status(400).json({ success: false, message: 'Select the resident this account belongs to' });
+    }
+
+    if (resident_id) {
+      const [resRows] = await pool.query('SELECT id FROM residents WHERE id = ?', [resident_id]);
+      if (resRows.length === 0) {
+        return res.status(400).json({ success: false, message: 'Selected resident was not found' });
+      }
+      const [linked] = await pool.query('SELECT id FROM users WHERE resident_id = ?', [resident_id]);
+      if (linked.length > 0) {
+        return res.status(409).json({ success: false, message: 'That resident already has an account' });
+      }
     }
 
     const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
@@ -67,14 +84,14 @@ exports.createUser = async (req, res) => {
     const hashedPassword = await bcryptjs.hash(password, 10);
 
     const [, result] = await pool.query(
-      'INSERT INTO users (full_name, email, password, role, is_active) VALUES (?, ?, ?, ?, true)',
-      [full_name, email, hashedPassword, role]
+      'INSERT INTO users (full_name, email, password, role, resident_id, is_active) VALUES (?, ?, ?, ?, ?, true)',
+      [full_name, email, hashedPassword, role, role === 'admin' ? (resident_id || null) : resident_id]
     );
 
     res.status(201).json({
       success: true,
       message: 'User created successfully',
-      user: { id: result.insertId, full_name, email, role }
+      user: { id: result.insertId, full_name, email, role, resident_id: resident_id || null }
     });
   } catch (error) {
     console.error('Create user error:', error);
@@ -85,7 +102,7 @@ exports.createUser = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { full_name, email, role } = req.body;
+    const { full_name, email, role, resident_id } = req.body;
 
     if (req.user.id !== parseInt(id) && !isAdmin(req.user)) {
       return res.status(403).json({ success: false, message: 'Unauthorized to update this user' });
@@ -98,12 +115,24 @@ exports.updateUser = async (req, res) => {
       }
     }
 
+    if (resident_id && isAdmin(req.user)) {
+      const [resRows] = await pool.query('SELECT id FROM residents WHERE id = ?', [resident_id]);
+      if (resRows.length === 0) {
+        return res.status(400).json({ success: false, message: 'Selected resident was not found' });
+      }
+      const [linked] = await pool.query('SELECT id FROM users WHERE resident_id = ? AND id != ?', [resident_id, id]);
+      if (linked.length > 0) {
+        return res.status(409).json({ success: false, message: 'That resident already has an account' });
+      }
+    }
+
     const updateFields = [];
     const updateValues = [];
 
     if (full_name) { updateFields.push('full_name = ?'); updateValues.push(full_name); }
     if (email) { updateFields.push('email = ?'); updateValues.push(email); }
     if (role && isAdmin(req.user)) { updateFields.push('role = ?'); updateValues.push(role); }
+    if (resident_id && isAdmin(req.user)) { updateFields.push('resident_id = ?'); updateValues.push(resident_id); }
 
     if (updateFields.length === 0) {
       return res.status(400).json({ success: false, message: 'No fields to update' });
@@ -133,7 +162,7 @@ exports.deleteUser = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Cannot delete your own account' });
     }
 
-    const [result] = await pool.query('DELETE FROM users WHERE id = ?', [id]);
+    const [, result] = await pool.query('DELETE FROM users WHERE id = ?', [id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ success: false, message: 'User not found' });
@@ -183,7 +212,7 @@ exports.resetPassword = async (req, res) => {
     }
 
     const hashedPassword = await bcryptjs.hash(newPassword, 10);
-    const [result] = await pool.query('UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?', [hashedPassword, id]);
+    const [, result] = await pool.query('UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?', [hashedPassword, id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ success: false, message: 'User not found' });

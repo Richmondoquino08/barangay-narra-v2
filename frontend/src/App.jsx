@@ -99,16 +99,16 @@ function AppRoutes() {
       <Route path="/treasurer-dashboard" element={wrap(TreasurerDashboard, ['treasurer','admin'])} />
 
       {/* Records */}
-      <Route path="/residents"    element={wrap(Residents,         ['admin','secretary'])} />
-      <Route path="/residents/:id" element={wrap(ResidentProfile,  ['admin','secretary'])} />
-      <Route path="/certificates" element={wrap(Certificates,      ['admin','secretary'])} />
-      <Route path="/certificates/verify" element={wrap(VerifyCertificate, ['admin','secretary','captain'])} />
-      <Route path="/blotter"      element={wrap(BlotterManagement, ['admin','captain','secretary'])} />
+      <Route path="/residents"    element={wrap(Residents,         ['admin','secretary','intern'])} />
+      <Route path="/residents/:id" element={wrap(ResidentProfile,  ['admin','secretary','intern'])} />
+      <Route path="/certificates" element={wrap(Certificates,      ['admin','secretary','intern'])} />
+      <Route path="/certificates/verify" element={wrap(VerifyCertificate, ['admin','secretary','captain','intern'])} />
+      <Route path="/blotter"      element={wrap(BlotterManagement, ['admin','captain','secretary','intern'])} />
 
       {/* Finance */}
       <Route path="/finance"       element={wrap(Finance,      ['admin','treasurer'])} />
       <Route path="/cheque-print" element={wrap(ChequePrint,  ['admin','treasurer'])} />
-      <Route path="/reports"       element={wrap(Reports,      ['admin','treasurer','secretary','captain'])} />
+      <Route path="/reports"       element={wrap(Reports,      ['admin','treasurer','secretary','captain','intern'])} />
 
       {/* Finance Forms */}
       <Route path="/finance/brgy-id" element={wrap(BarangayID, ['admin','treasurer','secretary'])} />
@@ -144,7 +144,7 @@ function AppRoutes() {
 
       {/* Communication */}
       <Route path="/announcements" element={wrap(Announcements)} />
-      <Route path="/documents"     element={wrap(Documents,  ['admin','secretary'])} />
+      <Route path="/documents"     element={wrap(Documents,  ['admin','secretary','intern'])} />
 
       {/* Admin */}
       <Route path="/users"    element={wrap(Users,    ['admin'])} />
