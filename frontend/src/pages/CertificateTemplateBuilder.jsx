@@ -448,17 +448,22 @@ function CertPreview({ config, sampleData, scale = 0.55 }) {
         {headerImg ? (
           <img src={headerImg} alt="Header" style={{ width:'100%', maxHeight: 100*scale, objectFit:'cover', display:'block' }}/>
         ) : (
-          <div style={{ display:'flex', alignItems:'center', gap: (config.header.logo_gap ?? 8)*scale, borderBottom: `${2*scale}px solid ${borderColor}`, paddingBottom: 10*scale, marginBottom: 10*scale }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap: (config.header.logo_gap ?? 8)*scale, borderBottom: `${2*scale}px solid ${borderColor}`, paddingBottom: 10*scale, marginBottom: 10*scale }}>
+            {/* No flex:1 on the text block — with it, the block always filled
+                the full row and stayed centered in that space, so lowering
+                Logo Gap barely moved anything visually. Without it, the whole
+                [logo – text – logo] group is centered as one unit and Gap
+                directly controls the visible space between logo and text. */}
             {logoL && <img src={logoL} style={{ width: (config.header.logo_size ?? 76)*scale, height: (config.header.logo_size ?? 76)*scale, objectFit:'contain', flexShrink: 0 }} alt="L"/>}
-            <div style={{ flex:1, textAlign:'center' }}>
-              {config.header.show_republic !== false && <p style={{ margin:0, fontSize:(config.header.text_size ?? 10.5)*scale, color:'#555' }}>REPUBLIC OF THE PHILIPPINES</p>}
-              {config.header.province && <p style={{ margin:0, fontSize:(config.header.text_size ?? 10.5)*scale, color:'#555' }}>{withLocationPrefix('PROVINCE OF', config.header.province)}</p>}
-              {config.header.city && <p style={{ margin:0, fontSize:(config.header.text_size ?? 10.5)*scale, color:'#555' }}>{withLocationPrefix('CITY OF', config.header.city)}</p>}
-              <p style={{ margin:`${3*scale}px 0 0`, fontSize:(config.header.name_size ?? 16)*scale, fontWeight:'bold' }}>{config.header.barangay_name || 'BARANGAY NAME'}</p>
+            <div style={{ textAlign:'center' }}>
+              {config.header.show_republic !== false && <p style={{ margin:0, fontSize:(config.header.text_size ?? 10.5)*scale, color:'#555', whiteSpace:'nowrap' }}>REPUBLIC OF THE PHILIPPINES</p>}
+              {config.header.province && <p style={{ margin:0, fontSize:(config.header.text_size ?? 10.5)*scale, color:'#555', whiteSpace:'nowrap' }}>{withLocationPrefix('PROVINCE OF', config.header.province)}</p>}
+              {config.header.city && <p style={{ margin:0, fontSize:(config.header.text_size ?? 10.5)*scale, color:'#555', whiteSpace:'nowrap' }}>{withLocationPrefix('CITY OF', config.header.city)}</p>}
+              <p style={{ margin:`${3*scale}px 0 0`, fontSize:(config.header.name_size ?? 16)*scale, fontWeight:'bold', whiteSpace:'nowrap' }}>{config.header.barangay_name || 'BARANGAY NAME'}</p>
               {config.header.office_label !== false && (
                 <>
                   <div style={{ borderTop:`${1*scale}px solid ${borderColor}`, margin:`${4*scale}px auto`, width:'60%' }}/>
-                  <p style={{ margin:0, fontSize:(config.header.text_size ?? 10.5)*scale }}>OFFICE OF THE PUNONG BARANGAY</p>
+                  <p style={{ margin:0, fontSize:(config.header.text_size ?? 10.5)*scale, whiteSpace:'nowrap' }}>OFFICE OF THE PUNONG BARANGAY</p>
                 </>
               )}
             </div>

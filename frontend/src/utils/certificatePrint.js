@@ -124,16 +124,22 @@ export function openPrintPreview(config, data, certId) {
   const nameSize = config.header.name_size ?? 16;
   const titleSize = config.style?.title_size ?? 14;
 
+  // No flex:1 on the text block below — with it, the block always filled the
+  // full row width and stayed centered in that space, so lowering logoGap
+  // barely moved anything visually. Without it, the whole
+  // [logo – text – logo] group is centered as one unit (justify-content on
+  // the row) and logoGap directly controls the visible space between logo
+  // and text.
   const headerBlock = headerImg
     ? `<img src="${headerImg}" style="width:100%;display:block;max-height:120pt;object-fit:cover;">`
-    : `<div style="display:flex;align-items:center;gap:${logoGap}pt;border-bottom:2pt solid ${borderColor};padding-bottom:10pt;margin-bottom:10pt;">
+    : `<div style="display:flex;align-items:center;justify-content:center;gap:${logoGap}pt;border-bottom:2pt solid ${borderColor};padding-bottom:10pt;margin-bottom:10pt;">
         ${logoL ? `<img src="${logoL}" style="width:${logoSize}pt;height:${logoSize}pt;object-fit:contain;flex-shrink:0;">` : ''}
-        <div style="flex:1;text-align:center;">
-          ${config.header.show_republic !== false ? `<p style="margin:0;font-size:${textSize}pt;color:#555;">REPUBLIC OF THE PHILIPPINES</p>` : ''}
-          ${config.header.province ? `<p style="margin:0;font-size:${textSize}pt;color:#555;">${withLocationPrefix('PROVINCE OF', config.header.province)}</p>` : ''}
-          ${config.header.city ? `<p style="margin:0;font-size:${textSize}pt;color:#555;">${withLocationPrefix('CITY OF', config.header.city)}</p>` : ''}
-          <p style="margin:4pt 0 0;font-size:${nameSize}pt;font-weight:bold;">${config.header.barangay_name || 'BARANGAY'}</p>
-          ${config.header.office_label !== false ? `<div style="border-top:1pt solid ${borderColor};width:60%;margin:4pt auto;"></div><p style="margin:0;font-size:${textSize}pt;">OFFICE OF THE PUNONG BARANGAY</p>` : ''}
+        <div style="text-align:center;">
+          ${config.header.show_republic !== false ? `<p style="margin:0;font-size:${textSize}pt;color:#555;white-space:nowrap;">REPUBLIC OF THE PHILIPPINES</p>` : ''}
+          ${config.header.province ? `<p style="margin:0;font-size:${textSize}pt;color:#555;white-space:nowrap;">${withLocationPrefix('PROVINCE OF', config.header.province)}</p>` : ''}
+          ${config.header.city ? `<p style="margin:0;font-size:${textSize}pt;color:#555;white-space:nowrap;">${withLocationPrefix('CITY OF', config.header.city)}</p>` : ''}
+          <p style="margin:4pt 0 0;font-size:${nameSize}pt;font-weight:bold;white-space:nowrap;">${config.header.barangay_name || 'BARANGAY'}</p>
+          ${config.header.office_label !== false ? `<div style="border-top:1pt solid ${borderColor};width:60%;margin:4pt auto;"></div><p style="margin:0;font-size:${textSize}pt;white-space:nowrap;">OFFICE OF THE PUNONG BARANGAY</p>` : ''}
         </div>
         ${logoR ? `<img src="${logoR}" style="width:${logoSize}pt;height:${logoSize}pt;object-fit:contain;flex-shrink:0;">` : (logoL ? `<div style="width:${logoSize}pt;flex-shrink:0;"></div>` : '')}
       </div>`;

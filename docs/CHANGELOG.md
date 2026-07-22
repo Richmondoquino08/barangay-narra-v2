@@ -5,6 +5,20 @@ Newest entries first. Each entry lists what changed, why, and which files were t
 
 ---
 
+## 2026-07-23 — Fixed: Logo Gap control had no visible effect
+
+**Why:** Reported immediately after the header layout controls above shipped — lowering "Logo Gap" wasn't visibly moving the logos closer to the text.
+
+**Root cause:** the center text block was `flex:1` inside the header row — meaning it always stretched to fill 100% of the remaining row width, with its text centered *inside that stretched block*. Shrinking the gap only changed how much space the logos took at the very edges; the text, already centered within a full-width block, barely moved regardless of the gap value. The gap value was being applied correctly — it just had almost no visible effect on this layout.
+
+**Fix:** removed `flex:1` from the text block and switched the row to `justify-content:center` — so the whole `[logo — text — logo]` group is now sized to its own content and centered as one unit within the header, with Logo Gap directly controlling the visible space between each logo and the text. Added `white-space:nowrap` to each header line so the now content-sized text block doesn't wrap awkwardly.
+
+**Trade-off, not addressed:** an unusually long Province/City/Barangay name could now overflow instead of wrapping, since the text block no longer has a constrained width. Not a concern for normal-length PH barangay/city/province names, but flagging in case a template ever uses something unusually long.
+
+**Files changed:** `frontend/src/pages/CertificateTemplateBuilder.jsx`, `frontend/src/utils/certificatePrint.js`.
+
+---
+
 ## 2026-07-23 — Certificate header layout is now tunable per template (no more hardcoded guesses)
 
 **Why:** After the previous letterhead size bump, a screenshot of a real generated certificate (with arrows drawn on it) showed the logos were still too far from the center text for this barangay's taste. Rather than keep guessing new hardcoded numbers from photos, added direct controls so any template can be tuned exactly as wanted.
