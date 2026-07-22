@@ -5,6 +5,16 @@ Newest entries first. Each entry lists what changed, why, and which files were t
 
 ---
 
+## 2026-07-23 — Signature slot is now a line, not a box
+
+**Why:** A signature is conventionally signed *above* a line, not inside a bordered box — only the thumbprint (and a photo) need an actual bounded area. Requested right after the photo/signature/thumbprint tag above shipped.
+
+**Changed:** both the standalone `{{signature_thumbprint}}` tag and the new `{{picture_signature_thumbmark}}` tag now render the signature slot as a bottom-border-only line instead of a full box. The line sits inside the same width/height footprint the box used to occupy (positioned at the bottom via flex), so it still lines up at the same height as the adjacent thumbprint box (and photo box, for the 3-box version) — only the visual treatment changed, not the layout/spacing.
+
+**Files changed:** `frontend/src/utils/certificatePrint.js`.
+
+---
+
 ## 2026-07-23 — New {{picture_signature_thumbmark}} tag; fixed Settings' stale header preview
 
 **Why:** Two follow-up requests. First: Settings' "Report/Certificate Header Preview" card didn't reflect reality — it was a separately hand-coded mockup that never showed Province/City lines, never showed the right-side seal, and read from the wrong field (`address` instead of `province`/`city_municipality`) — nothing like the real certificate header. Second: wanted the resident's photo placed together with the signature and thumbprint boxes, proportionally, in the middle of the certificate, insertable as a tag.

@@ -36,10 +36,20 @@ export function withLocationPrefix(prefix, value) {
 // printing (used by "with Thumbmark" certificate types). Sized in em, not
 // pt/px, so it scales correctly whether rendered at full size in the actual
 // print output or shrunk down inside the live editor's scaled preview.
+// A signature is conventionally a line to sign above, not a bordered box —
+// only the thumbprint (and the photo, below) needs an actual bounded area.
+// The line sits inside the same footprint as a box (flex, aligned to the
+// bottom) so it still lines up with an adjacent boxed element at the same
+// height.
+const signatureLine = (width, height) =>
+  `<div style="width:${width};height:${height};display:flex;align-items:flex-end;margin:0 auto;">` +
+    `<div style="width:100%;border-bottom:0.12em solid #111;"></div>` +
+  '</div>';
+
 export const SIGNATURE_THUMBPRINT_HTML =
   '<div style="display:flex;gap:2.5em;justify-content:center;margin:0.8em 0;">' +
     '<div style="text-align:center;">' +
-      '<div style="width:7em;height:4em;border:0.12em solid #111;margin:0 auto;"></div>' +
+      signatureLine('7em', '4em') +
       '<p style="margin:0.2em 0 0;font-size:0.75em;font-weight:bold;letter-spacing:0.5px;">SIGNATURE</p>' +
     '</div>' +
     '<div style="text-align:center;">' +
@@ -49,12 +59,12 @@ export const SIGNATURE_THUMBPRINT_HTML =
   '</div>';
 
 // Same idea as SIGNATURE_THUMBPRINT_HTML, but with the resident's own photo
-// added as a third, equally-proportioned box — all three the same size so
-// they read as one matched set, centered in the certificate body. photoUrl
-// is a function argument (not baked into a constant) because it's different
-// per resident/per certificate — falls back to an empty placeholder box so
-// the layout is still visible in the template preview before a real resident
-// is selected.
+// added as a third, equally-proportioned slot — all three share the same
+// footprint so they read as one matched set, centered in the certificate
+// body. photoUrl is a function argument (not baked into a constant) because
+// it's different per resident/per certificate — falls back to an empty
+// placeholder box so the layout is still visible in the template preview
+// before a real resident is selected.
 export function buildPictureSignatureThumbprintHtml(photoUrl) {
   const boxSize = '6em';
   const box = (content, label) =>
@@ -68,7 +78,7 @@ export function buildPictureSignatureThumbprintHtml(photoUrl) {
   const emptyBox = `<div style="width:${boxSize};height:${boxSize};border:0.12em solid #111;margin:0 auto;"></div>`;
   return '<div style="display:flex;gap:2em;justify-content:center;align-items:flex-start;margin:0.8em 0;">' +
     box(photoBox, '2X2 PHOTO') +
-    box(emptyBox, 'SIGNATURE') +
+    box(signatureLine(boxSize, boxSize), 'SIGNATURE') +
     box(emptyBox, 'RIGHT THUMBPRINT') +
   '</div>';
 }
