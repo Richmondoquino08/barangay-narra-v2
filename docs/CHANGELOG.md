@@ -5,6 +5,22 @@ Newest entries first. Each entry lists what changed, why, and which files were t
 
 ---
 
+## 2026-07-23 — New {{picture_signature_thumbmark}} tag; fixed Settings' stale header preview
+
+**Why:** Two follow-up requests. First: Settings' "Report/Certificate Header Preview" card didn't reflect reality — it was a separately hand-coded mockup that never showed Province/City lines, never showed the right-side seal, and read from the wrong field (`address` instead of `province`/`city_municipality`) — nothing like the real certificate header. Second: wanted the resident's photo placed together with the signature and thumbprint boxes, proportionally, in the middle of the certificate, insertable as a tag.
+
+**Settings header preview — fixed:** rewritten to mirror the actual header structure used by `certificatePrint.js`/`CertificateTemplateBuilder.jsx`: Republic → Province → City → Barangay Name → Office label, both seals, centered as one group, using `withLocationPrefix` for consistent formatting. It's a system-wide preview so it can't reflect per-template overrides (Logo Size/Gap/Text Size live per-template, not globally), but it now correctly reflects the settings that *are* global — province, city, both logos.
+
+**New tag: `{{picture_signature_thumbmark}}`** — inserts the resident's photo, an empty signature box, and an empty thumbprint box as three equally-sized (6em), evenly-spaced, centered boxes — a matched set, unlike the old floated 2x2 photo which was a different size and stuck to the right margin. Falls back to an empty placeholder box when no photo is on file, so the layout is visible in the Template Builder even before generating a real certificate. Click it from the placeholder list like any other tag.
+
+**Removed:** the certificate body's automatic, unconditional floated photo (shown whenever a resident had a photo on file, regardless of certificate type) — superseded by the new tag, which a template author places deliberately. Removing this also prevents the photo from appearing twice on templates that use the new tag.
+
+**Bug fixed along the way:** `insertPlaceholder` (the function behind clicking a placeholder chip) appended every tag inline at the end of the body text with just a leading space. For block-level tags — `{{signature_thumbprint}}` and now `{{picture_signature_thumbmark}}` — appending inline after other text means the print renderer would wrap the whole line in a `<p>`, breaking it out of its intended position (a pre-existing risk in the code's own comments, now actually fixed instead of just documented). Both block tags now insert on their own line automatically when clicked.
+
+**Files changed:** `frontend/src/pages/Settings.jsx`, `frontend/src/utils/certificatePrint.js`, `frontend/src/pages/CertificateTemplateBuilder.jsx`.
+
+---
+
 ## 2026-07-23 — Fixed: Logo Gap control had no visible effect
 
 **Why:** Reported immediately after the header layout controls above shipped — lowering "Logo Gap" wasn't visibly moving the logos closer to the text.

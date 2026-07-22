@@ -3,7 +3,7 @@ import { certificatesAPI } from '../api/apiClient';
 import { useToast } from '../components/Toast';
 import { resolveAssetUrl } from '../contexts/ThemeContext';
 import { Upload, X, Eye, Save, Loader2, Image, PenLine, AlignLeft, FileText } from 'lucide-react';
-import { escapeHtml, boldOrdinalDate, openPrintPreview, withLocationPrefix, SIGNATURE_THUMBPRINT_HTML } from '../utils/certificatePrint';
+import { escapeHtml, boldOrdinalDate, openPrintPreview, withLocationPrefix, SIGNATURE_THUMBPRINT_HTML, buildPictureSignatureThumbprintHtml } from '../utils/certificatePrint';
 
 function ordinalDate(dateInput) {
   const d = dateInput ? new Date(dateInput) : new Date();
@@ -295,6 +295,7 @@ const PLACEHOLDERS = [
   { tag: '{{or_number}}',     label: 'O.R. Number' },
   { tag: '{{fee}}',           label: 'Fee Amount' },
   { tag: '{{signature_thumbprint}}', label: 'Signature & Right Thumbprint Boxes' },
+  { tag: '{{picture_signature_thumbmark}}', label: '2x2 Photo, Signature & Thumbprint (3 boxes)' },
   // ── Staff-filled in print window (template-specific) ───────────────────
   { tag: '{{requested_by}}',         label: 'Requested By' },
   { tag: '{{relationship}}',         label: 'Relationship' },
@@ -423,7 +424,8 @@ function CertPreview({ config, sampleData, scale = 0.55 }) {
       .replace(/\{\{purpose\}\}/g,       escapeHtml(sampleData.purpose))
       .replace(/\{\{date\}\}/g,          boldOrdinalDate(sampleData.date))
       .replace(/\{\{or_number\}\}/g,     sampleData.or_number ? `O.R. No. ${escapeHtml(sampleData.or_number)}` : '')
-      .replace(/\{\{signature_thumbprint\}\}/g, SIGNATURE_THUMBPRINT_HTML);
+      .replace(/\{\{signature_thumbprint\}\}/g, SIGNATURE_THUMBPRINT_HTML)
+      .replace(/\{\{picture_signature_thumbmark\}\}/g, buildPictureSignatureThumbprintHtml(sampleData.profile_image_url));
   }
 
   const W = 816 * scale;
@@ -623,8 +625,14 @@ export default function CertificateTemplateBuilder({ initial, settings, onSaved,
     }));
   }
 
+  // Structural/block tags (rendered as a <div>, not inline text) must land on
+  // their own line — the print renderer only skips wrapping a line in <p>
+  // when the *whole* line starts with "<div" after fill(); appended inline
+  // after other text it would get wrapped in a <p> and render in the wrong
+  // spot (see the comment above bodyHtml in certificatePrint.js).
+  const BLOCK_TAGS = ['{{signature_thumbprint}}', '{{picture_signature_thumbmark}}'];
   function insertPlaceholder(tag) {
-    setConfig(p => ({ ...p, body: p.body + ' ' + tag }));
+    setConfig(p => ({ ...p, body: p.body + (BLOCK_TAGS.includes(tag) ? `\n${tag}\n` : ' ' + tag) }));
   }
 
   // Tab inserts a real tab character (used for paragraph indent on print) instead

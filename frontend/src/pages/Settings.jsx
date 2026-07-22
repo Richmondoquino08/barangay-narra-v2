@@ -5,6 +5,7 @@ import { useToast } from '../components/Toast';
 import { useTheme, resolveAssetUrl } from '../contexts/ThemeContext';
 import { Upload, Image, Palette, Building2, Save, RefreshCw, X, FileText, PenLine, Loader2, Download, Trash2, Plus, FolderOpen, ShieldCheck, Check } from 'lucide-react';
 import { DEFAULT_ROLE_PERMISSIONS } from '../contexts/ThemeContext';
+import { withLocationPrefix } from '../utils/certificatePrint';
 
 const FONT_SIZE_PX = { small:'13px', medium:'15px', large:'16px', xlarge:'18px' };
 function applyFontPreview(size) {
@@ -796,19 +797,31 @@ export default function Settings() {
               {/* Live print preview */}
               <div className="border-2 border-dashed border-gray-200 dark:border-[#2e334a] rounded-xl overflow-hidden">
                 <div className="bg-white p-6 font-sans" style={{ fontFamily: 'Arial, sans-serif' }}>
-                  {/* Header */}
-                  <div className="flex items-center gap-4 border-b-2 border-gray-800 pb-3 mb-3">
+                  {/* Header — mirrors the actual certificate header structure
+                      (CertificateTemplateBuilder.jsx / certificatePrint.js):
+                      Republic / Province / City / Barangay Name / Office
+                      label, both seals, logo+text centered as one group. This
+                      previously showed a different, simplified layout (no
+                      province/city lines, no right seal, used `address`
+                      instead of province/city) that didn't match what
+                      actually prints. */}
+                  <div className="flex items-center justify-center gap-3 border-b-2 border-gray-800 pb-3 mb-3">
                     {logoUrl && (
                       <img src={resolveAssetUrl(logoUrl)}
                         alt="Logo" className="w-16 h-16 object-contain flex-shrink-0"/>
                     )}
-                    <div className="text-center flex-1">
+                    <div className="text-center">
                       <p className="text-xs text-gray-600">Republic of the Philippines</p>
-                      <p className="font-bold text-base text-gray-900">{form.barangay_name || 'BARANGAY NAME'}</p>
-                      <p className="text-xs text-gray-600">{form.address || 'Address, Municipality, Province'}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Office of the Punong Barangay</p>
+                      {form.province && <p className="text-xs text-gray-600">{withLocationPrefix('PROVINCE OF', form.province)}</p>}
+                      {form.city_municipality && <p className="text-xs text-gray-600">{withLocationPrefix('CITY OF', form.city_municipality)}</p>}
+                      <p className="font-bold text-base text-gray-900 mt-0.5">{form.barangay_name || 'BARANGAY NAME'}</p>
+                      <div className="border-t border-gray-400 w-3/5 mx-auto my-1"/>
+                      <p className="text-xs text-gray-500">Office of the Punong Barangay</p>
                     </div>
-                    {logoUrl && <div className="w-16 h-16 flex-shrink-0"/>}
+                    {rightLogoUrl ? (
+                      <img src={resolveAssetUrl(rightLogoUrl)}
+                        alt="Right Logo" className="w-16 h-16 object-contain flex-shrink-0"/>
+                    ) : (logoUrl && <div className="w-16 h-16 flex-shrink-0"/>)}
                   </div>
 
                   {/* Certificate title placeholder */}

@@ -48,6 +48,31 @@ export const SIGNATURE_THUMBPRINT_HTML =
     '</div>' +
   '</div>';
 
+// Same idea as SIGNATURE_THUMBPRINT_HTML, but with the resident's own photo
+// added as a third, equally-proportioned box — all three the same size so
+// they read as one matched set, centered in the certificate body. photoUrl
+// is a function argument (not baked into a constant) because it's different
+// per resident/per certificate — falls back to an empty placeholder box so
+// the layout is still visible in the template preview before a real resident
+// is selected.
+export function buildPictureSignatureThumbprintHtml(photoUrl) {
+  const boxSize = '6em';
+  const box = (content, label) =>
+    '<div style="text-align:center;">' +
+      content +
+      `<p style="margin:0.2em 0 0;font-size:0.7em;font-weight:bold;letter-spacing:0.5px;">${label}</p>` +
+    '</div>';
+  const photoBox = photoUrl
+    ? `<img src="${photoUrl}" style="width:${boxSize};height:${boxSize};object-fit:cover;border:0.12em solid #111;display:block;margin:0 auto;">`
+    : `<div style="width:${boxSize};height:${boxSize};border:0.12em solid #111;margin:0 auto;"></div>`;
+  const emptyBox = `<div style="width:${boxSize};height:${boxSize};border:0.12em solid #111;margin:0 auto;"></div>`;
+  return '<div style="display:flex;gap:2em;justify-content:center;align-items:flex-start;margin:0.8em 0;">' +
+    box(photoBox, '2X2 PHOTO') +
+    box(emptyBox, 'SIGNATURE') +
+    box(emptyBox, 'RIGHT THUMBPRINT') +
+  '</div>';
+}
+
 // ── Print window renderer (matches Philippine certificate format exactly) ──
 export function openPrintPreview(config, data, certId) {
   const w = window.open('', '_blank', 'width=960,height=800');
@@ -78,7 +103,8 @@ export function openPrintPreview(config, data, certId) {
       .replace(/\{\{date\}\}/g,          boldOrdinalDate(data.date || ''))
       .replace(/\{\{or_number\}\}/g,     data.or_number ? `O.R. No.: ${escapeHtml(data.or_number)}` : '')
       .replace(/\{\{fee\}\}/g,           data.fee ? `₱${Number(data.fee).toLocaleString('en-PH',{minimumFractionDigits:2})}` : '')
-      .replace(/\{\{signature_thumbprint\}\}/g, SIGNATURE_THUMBPRINT_HTML);
+      .replace(/\{\{signature_thumbprint\}\}/g, SIGNATURE_THUMBPRINT_HTML)
+      .replace(/\{\{picture_signature_thumbmark\}\}/g, buildPictureSignatureThumbprintHtml(data.profile_image_url));
     // Template-specific custom fields (requested_by, case_number, cause_of_death, etc.)
     // filled in at generation time — auto-fill any remaining {{tag}} found in data.
     out = out.replace(/\{\{([a-z0-9_]+)\}\}/gi, (match, tag) =>
@@ -278,15 +304,14 @@ export function openPrintPreview(config, data, certId) {
           <p style="margin:0;font-weight:bold;font-size:${titleSize}pt;text-decoration:underline;letter-spacing:2px;">${config.title}</p>
         </div>
 
-        <!-- Body — fully editable -->
+        <!-- Body — fully editable. Resident photo is placed deliberately via
+             the {{picture_signature_thumbmark}} tag in the template body
+             (proportional with the signature/thumbprint boxes), not shown
+             automatically here — avoids the photo appearing twice on
+             templates that use the tag. -->
         <div style="margin:8pt 0 14pt;"
              contenteditable="true" spellcheck="false">
-          ${data.profile_image_url ? `<div style="float:right;margin:0 0 10pt 16pt;text-align:center;border:1pt solid #ccc;padding:4pt;background:#fafafa;">
-            <img src="${data.profile_image_url}" style="width:1.4in;height:1.4in;object-fit:cover;display:block;">
-            <p style="margin:3pt 0 0;font-size:8pt;letter-spacing:1px;color:#555;">2x2 PHOTO</p>
-          </div>` : ''}
           ${bodyHtml}
-          <div style="clear:both;"></div>
         </div>
 
         <!-- Additional signatories — editable -->
