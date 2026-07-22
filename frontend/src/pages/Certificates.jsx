@@ -269,7 +269,7 @@ export default function Certificates() {
       const [certs, tpls, res, st] = await Promise.all([
         certificatesAPI.getAll(params),
         certificatesAPI.getTemplates(),
-        residentsAPI.getAll(1, 500),
+        residentsAPI.getAll(1, 5000),
         certificatesAPI.getStats(),
       ]);
       setCertificates(certs.data.certificates || []);

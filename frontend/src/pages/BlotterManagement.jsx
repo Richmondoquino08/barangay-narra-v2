@@ -180,7 +180,7 @@ export default function BlotterManagement() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    residentsAPI.getAll(1, 500).then(r => setResidents(r.data.residents || [])).catch(() => {});
+    residentsAPI.getAll(1, 5000).then(r => setResidents(r.data.residents || [])).catch(() => {});
     officialsAPI.getAll().then(r => setOfficials(r.data.officials || [])).catch(() => {});
   }, []);
 

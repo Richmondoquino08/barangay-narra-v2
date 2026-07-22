@@ -467,7 +467,7 @@ export default function SocialPrograms() {
   const [residents, setResidents] = useState([]);
 
   useEffect(() => {
-    residentsAPI.getAll(1, 1000).then(r => setResidents(r.data.residents || [])).catch(() => {});
+    residentsAPI.getAll(1, 5000).then(r => setResidents(r.data.residents || [])).catch(() => {});
   }, []);
 
   const tabContent = {

@@ -28,7 +28,7 @@ export default function Users() {
     try {
       const [usersRes, residentsRes] = await Promise.all([
         usersAPI.getAll(),
-        residentsAPI.getAll(1, 500),
+        residentsAPI.getAll(1, 5000),
       ]);
       setUsers(usersRes.data.users || []);
       setResidents(residentsRes.data.residents || []);

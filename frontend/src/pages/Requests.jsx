@@ -47,7 +47,7 @@ export default function Requests() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    residentsAPI.getAll(1, 500).then(r => setResidents(r.data.residents || [])).catch(() => {});
+    residentsAPI.getAll(1, 5000).then(r => setResidents(r.data.residents || [])).catch(() => {});
   }, []);
 
   async function handleCreate(e) {

@@ -5,6 +5,16 @@ Newest entries first. Each entry lists what changed, why, and which files were t
 
 ---
 
+## 2026-07-22 — Bug fix: resident pickers only loaded the first 500 (of 2,316) residents
+
+**Why:** Reported as "why can't I find some residents when adding a user" — turned out to be a real bug, not a search problem. Six pages load residents once into a plain array for their search/picker components, capped at a hardcoded page size (`residentsAPI.getAll(1, 500)` or `1000`). With 2,316 total residents in the database, ordered alphabetically by last name, anyone past roughly the 500th (or 1000th) name — e.g. most residents from "C" onward — was silently invisible to search in every one of these pickers. Typing their exact name did nothing because they were never loaded to begin with.
+
+**Fix:** bumped the cap to 5000 (comfortably above the current 2,316 with room to grow) in all six places: `frontend/src/pages/Users.jsx`, `Certificates.jsx`, `BlotterManagement.jsx`, `Requests.jsx`, `SocialPrograms.jsx`. Verified directly against the API: the old limit returned 500/2316 residents (cutting off at "BALEJE"); the new limit returns all 2316 (through "ZULITA").
+
+**Known limitation, not fixed:** this is a page-size bump, not a structural fix — it doesn't scale indefinitely. If the resident count grows much further (tens of thousands), these pages would need to switch from "load everything once, filter client-side" to live server-side search (the `GET /residents/search/query` endpoint already exists and is unused by these pickers). Not worth doing today at this data size.
+
+---
+
 ## 2026-07-22 — Resident verification when creating/editing user accounts
 
 **Why:** Follow-up to the resident-linked accounts feature above. Picking a resident from a search box with no further confirmation was too easy to get wrong, especially when two residents share the same name (found this firsthand — Ernesto Doncillo has an exact duplicate record). Added three low-effort safeguards instead of the bigger self-service identity-verification flow, which isn't warranted unless account-sharing/impersonation turns out to be a real concern.
