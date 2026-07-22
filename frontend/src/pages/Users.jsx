@@ -5,7 +5,7 @@ import { useToast } from '../components/Toast';
 import Modal from '../components/Modal';
 import Badge from '../components/Badge';
 import ResidentSearch from '../components/ResidentSearch';
-import { Users as UsersIcon, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { Users as UsersIcon, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, KeyRound, Eye, EyeOff, Cake, MapPin, Phone, Heart } from 'lucide-react';
 
 const ROLES = ['admin','secretary','captain','treasurer','intern'];
 
@@ -21,6 +21,7 @@ export default function Users() {
   const [showPass, setShowPass] = useState(false);
   const [form, setForm] = useState({ full_name:'', email:'', password:'', role:'secretary', resident_id:'' });
   const [newPass, setNewPass] = useState('');
+  const selectedResident = residents.find(r => String(r.id) === String(form.resident_id));
 
   const load = async () => {
     setLoading(true);
@@ -168,17 +169,44 @@ export default function Users() {
           </div>
 
           {form.role !== 'admin' && (
-            <ResidentSearch
-              label="Resident *"
-              placeholder="Search resident by name or contact…"
-              residents={residents}
-              value={form.resident_id}
-              onChange={id => {
-                const picked = residents.find(r => String(r.id) === String(id));
-                setForm(p => ({ ...p, resident_id: id, full_name: picked ? picked.full_name : p.full_name }));
-              }}
-              required
-            />
+            <>
+              <ResidentSearch
+                label="Resident *"
+                placeholder="Search resident by name or contact…"
+                residents={residents}
+                value={form.resident_id}
+                onChange={id => {
+                  const picked = residents.find(r => String(r.id) === String(id));
+                  setForm(p => ({ ...p, resident_id: id, full_name: picked ? picked.full_name : p.full_name }));
+                }}
+                required
+              />
+              {selectedResident && (
+                <div className="rounded-xl border border-gray-200 dark:border-[#2e334a] bg-gray-50 dark:bg-[#1a1d27] p-3.5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500 mb-2">
+                    Confirm this is the right person
+                  </p>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                    <div className="flex items-center gap-1.5 text-gray-600 dark:text-slate-300">
+                      <Cake size={13} className="text-gray-400 dark:text-slate-500 flex-shrink-0"/>
+                      {selectedResident.birth_date ? `${new Date(selectedResident.birth_date).toLocaleDateString('en-PH')} (${selectedResident.age}y)` : '—'}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-gray-600 dark:text-slate-300">
+                      <Heart size={13} className="text-gray-400 dark:text-slate-500 flex-shrink-0"/>
+                      <span className="capitalize">{selectedResident.civil_status || '—'}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-gray-600 dark:text-slate-300 col-span-2">
+                      <MapPin size={13} className="text-gray-400 dark:text-slate-500 flex-shrink-0"/>
+                      <span className="truncate">{selectedResident.address}{selectedResident.purok ? ` · ${selectedResident.purok}` : ''}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-gray-600 dark:text-slate-300 col-span-2">
+                      <Phone size={13} className="text-gray-400 dark:text-slate-500 flex-shrink-0"/>
+                      {selectedResident.contact_number || 'No contact number on file'}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           <div className="flex gap-2 justify-end pt-1">

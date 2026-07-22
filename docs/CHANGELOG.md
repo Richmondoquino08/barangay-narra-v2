@@ -5,6 +5,21 @@ Newest entries first. Each entry lists what changed, why, and which files were t
 
 ---
 
+## 2026-07-22 — Resident verification when creating/editing user accounts
+
+**Why:** Follow-up to the resident-linked accounts feature above. Picking a resident from a search box with no further confirmation was too easy to get wrong, especially when two residents share the same name (found this firsthand — Ernesto Doncillo has an exact duplicate record). Added three low-effort safeguards instead of the bigger self-service identity-verification flow, which isn't warranted unless account-sharing/impersonation turns out to be a real concern.
+
+**What changed:**
+- **Confirmation card** — after picking a resident in the New/Edit User form, a card now shows their birthdate/age, civil status, address + purok, and contact number, so the admin can visually double-check before saving instead of trusting a one-line search result.
+- **Duplicate-name warning** — `ResidentSearch` (shared by Users and Certificates) now flags residents who share an exact full name with someone else, both as a small badge in the dropdown and as a warning line once selected ("N other residents share this name — double-check..."). Benefits certificate generation too, not just user creation.
+- **Audit log entry** — linking or re-linking a resident to a user account now writes a `link_resident_to_user` entry (who did it, which account, which resident) via the existing audit log. Only logs on an actual change, not on every save.
+
+**Files changed:** `frontend/src/components/ResidentSearch.jsx`, `frontend/src/pages/Users.jsx`, `backend/controllers/usersController.js`.
+
+**Not built (discussed, intentionally deferred):** a self-service "claim your account" flow where the resident completes their own registration via a link sent to their on-file contact info, instead of the admin setting a password directly. Bigger feature (needs SMS/email delivery), only worth it if the confirmation-card + audit-log combination above turns out to be insufficient in practice.
+
+---
+
 ## 2026-07-22 — Resident-linked staff accounts, Intern/Guest role, resident-style My Profile
 
 **Why:** Staff accounts should represent real residents of the barangay (except the system admin account, which isn't necessarily a person who lives here), and the office wanted a way to give interns/temporary helpers system access that's view-only by default rather than either full access or none.

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, User } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Search, X, User, AlertTriangle } from 'lucide-react';
 
 /**
  * ResidentSearch — searchable resident picker
@@ -24,6 +24,20 @@ export default function ResidentSearch({
   const [open,     setOpen]     = useState(false);
   const [selected, setSelected] = useState(null);
   const containerRef = useRef(null);
+
+  /* ── Count residents sharing the same full name — flags likely mix-ups
+     (e.g. two family members with the same name) before an admin picks
+     the wrong one from a short address/contact snippet ── */
+  const nameCounts = useMemo(() => {
+    const counts = {};
+    for (const r of residents) {
+      const key = (r.full_name || '').trim().toLowerCase();
+      if (!key) continue;
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    return counts;
+  }, [residents]);
+  const duplicateCount = (r) => nameCounts[(r.full_name || '').trim().toLowerCase()] || 0;
 
   /* ── Sync selected when value or residents change ── */
   useEffect(() => {
@@ -78,22 +92,30 @@ export default function ResidentSearch({
 
       {/* ── Selected state ── */}
       {selected ? (
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 border-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 dark:border-indigo-600">
-          <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
-            <User size={13} className="text-white" />
+        <div>
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 border-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 dark:border-indigo-600">
+            <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
+              <User size={13} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 dark:text-slate-100 truncate">{selected.full_name}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{selected.address}</p>
+            </div>
+            <button
+              type="button"
+              onClick={clear}
+              className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 dark:bg-[#2e334a] flex items-center justify-center text-gray-500 dark:text-slate-400 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/40 dark:hover:text-rose-400 transition"
+              title="Clear selection"
+            >
+              <X size={12} />
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 dark:text-slate-100 truncate">{selected.full_name}</p>
-            <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{selected.address}</p>
-          </div>
-          <button
-            type="button"
-            onClick={clear}
-            className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 dark:bg-[#2e334a] flex items-center justify-center text-gray-500 dark:text-slate-400 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/40 dark:hover:text-rose-400 transition"
-            title="Clear selection"
-          >
-            <X size={12} />
-          </button>
+          {duplicateCount(selected) > 1 && (
+            <p className="flex items-center gap-1.5 mt-1.5 text-xs text-amber-600 dark:text-amber-400">
+              <AlertTriangle size={12} className="flex-shrink-0" />
+              {duplicateCount(selected) - 1} other resident{duplicateCount(selected) > 2 ? 's' : ''} share{duplicateCount(selected) === 2 ? 's' : ''} this exact name — double-check the address/birthdate before continuing.
+            </p>
+          )}
         </div>
       ) : (
         /* ── Search input ── */
@@ -142,7 +164,15 @@ export default function ResidentSearch({
                     {r.full_name?.charAt(0)}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate">{r.full_name}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate flex items-center gap-1.5">
+                      {r.full_name}
+                      {duplicateCount(r) > 1 && (
+                        <span title={`${duplicateCount(r)} residents share this name`}
+                          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-[10px] font-semibold flex-shrink-0">
+                          <AlertTriangle size={9} /> {duplicateCount(r)}
+                        </span>
+                      )}
+                    </p>
                     <p className="text-xs text-gray-400 dark:text-slate-500 truncate">{r.address}</p>
                   </div>
                   {r.contact_number && (

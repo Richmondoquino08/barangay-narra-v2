@@ -1,6 +1,7 @@
 const bcryptjs = require('bcryptjs');
 const pool = require('../config/db');
 const { isAdmin } = require('../middleware/roles');
+const auditService = require('../services/auditService');
 
 exports.getAllUsers = async (req, res) => {
   try {
@@ -65,11 +66,16 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Select the resident this account belongs to' });
     }
 
+    let residentName = null;
     if (resident_id) {
-      const [resRows] = await pool.query('SELECT id FROM residents WHERE id = ?', [resident_id]);
+      const [resRows] = await pool.query(
+        `SELECT first_name, middle_name, last_name FROM residents WHERE id = ?`, [resident_id]
+      );
       if (resRows.length === 0) {
         return res.status(400).json({ success: false, message: 'Selected resident was not found' });
       }
+      const r = resRows[0];
+      residentName = `${r.first_name}${r.middle_name ? ' ' + r.middle_name : ''} ${r.last_name}`;
       const [linked] = await pool.query('SELECT id FROM users WHERE resident_id = ?', [resident_id]);
       if (linked.length > 0) {
         return res.status(409).json({ success: false, message: 'That resident already has an account' });
@@ -87,6 +93,11 @@ exports.createUser = async (req, res) => {
       'INSERT INTO users (full_name, email, password, role, resident_id, is_active) VALUES (?, ?, ?, ?, ?, true)',
       [full_name, email, hashedPassword, role, role === 'admin' ? (resident_id || null) : resident_id]
     );
+
+    if (resident_id) {
+      await auditService.logAction(req.user.id, 'link_resident_to_user',
+        `Linked account "${full_name}" (${email}) to resident #${resident_id} (${residentName})`);
+    }
 
     res.status(201).json({
       success: true,
@@ -115,14 +126,25 @@ exports.updateUser = async (req, res) => {
       }
     }
 
+    let residentChanged = false;
+    let residentName = null;
     if (resident_id && isAdmin(req.user)) {
-      const [resRows] = await pool.query('SELECT id FROM residents WHERE id = ?', [resident_id]);
-      if (resRows.length === 0) {
-        return res.status(400).json({ success: false, message: 'Selected resident was not found' });
-      }
-      const [linked] = await pool.query('SELECT id FROM users WHERE resident_id = ? AND id != ?', [resident_id, id]);
-      if (linked.length > 0) {
-        return res.status(409).json({ success: false, message: 'That resident already has an account' });
+      const [current] = await pool.query('SELECT resident_id FROM users WHERE id = ?', [id]);
+      residentChanged = String(current[0]?.resident_id) !== String(resident_id);
+
+      if (residentChanged) {
+        const [resRows] = await pool.query(
+          `SELECT first_name, middle_name, last_name FROM residents WHERE id = ?`, [resident_id]
+        );
+        if (resRows.length === 0) {
+          return res.status(400).json({ success: false, message: 'Selected resident was not found' });
+        }
+        const r = resRows[0];
+        residentName = `${r.first_name}${r.middle_name ? ' ' + r.middle_name : ''} ${r.last_name}`;
+        const [linked] = await pool.query('SELECT id FROM users WHERE resident_id = ? AND id != ?', [resident_id, id]);
+        if (linked.length > 0) {
+          return res.status(409).json({ success: false, message: 'That resident already has an account' });
+        }
       }
     }
 
@@ -142,6 +164,11 @@ exports.updateUser = async (req, res) => {
     updateValues.push(id);
 
     await pool.query(`UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`, updateValues);
+
+    if (residentChanged) {
+      await auditService.logAction(req.user.id, 'link_resident_to_user',
+        `Linked account #${id} (${full_name || email || ''}) to resident #${resident_id} (${residentName})`);
+    }
 
     res.json({ success: true, message: 'User updated successfully' });
   } catch (error) {
