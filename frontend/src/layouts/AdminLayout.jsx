@@ -3,7 +3,7 @@ import Sidebar from '../components/Sidebar';
 import AnnouncementPopup from '../components/AnnouncementPopup';
 import { Bell, Search, Menu, Moon, Sun, Users, FileText, AlertTriangle, X,
          ChevronRight, LogOut, Settings, Megaphone, DollarSign,
-         BarChart2, Shield, HardHat } from 'lucide-react';
+         BarChart2, Shield, HardHat, UserCircle, KeyRound } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -67,6 +67,8 @@ const PAGE_TITLES = {
   '/trash':        'Trash',
   '/users':        'User Management',
   '/settings':     'Settings',
+  '/profile':         'My Profile',
+  '/change-password': 'Change Password',
 };
 
 // ── Quick Search ──────────────────────────────────────────────────────────
@@ -448,7 +450,6 @@ export default function AdminLayout({ children }) {
   const chipBdr   = D ? 'rgba(255,255,255,0.08)' : 'rgba(226,232,240,0.90)';
   const chipHovBg = D ? 'rgba(26,30,46,0.95)'    : 'rgba(255,255,255,0.95)';
   const chipNm    = D ? '#e8ecf4'  : '#0f172a';
-  const chipRole  = D ? 'rgba(140,150,180,0.70)' : 'rgba(100,116,139,0.80)';
   const dropBg    = D ? 'rgba(12,15,25,0.98)'    : 'rgba(255,255,255,0.98)';
   const dropBdr   = D ? 'rgba(255,255,255,0.08)' : 'rgba(226,232,240,0.80)';
   const dropNm    = D ? '#e8ecf4'  : '#0f172a';
@@ -699,12 +700,9 @@ export default function AdminLayout({ children }) {
                     style={{ background:'linear-gradient(135deg,var(--primary),var(--primary-hover))', boxShadow:'0 2px 6px var(--primary-shadow)' }}>
                     {initials}
                   </div>
-                  <div className="hidden sm:block text-left">
-                    <p className="text-sm font-bold leading-none" style={{ color: chipNm }}>{user?.full_name}</p>
-                    <p className="text-[10px] mt-0.5 capitalize" style={{ color: chipRole }}>
-                      {roleLbl[user?.role] || user?.role}
-                    </p>
-                  </div>
+                  <p className="hidden sm:block text-sm font-bold leading-none" style={{ color: chipNm }}>
+                    {user?.full_name?.split(' ')[0]}
+                  </p>
                   <ChevronRight size={13} className={`transition-transform duration-200 ${userMenuOpen?'rotate-90':''}`}
                     style={{ color: D?'rgba(100,116,139,0.60)':'rgba(148,163,184,0.70)' }}/>
                 </button>
@@ -726,10 +724,28 @@ export default function AdminLayout({ children }) {
                       </span>
                     </div>
 
+                    <button onClick={()=>{ navigate('/profile'); setUserMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-left transition-all"
+                      style={{ color: dropItmC }}
+                      onMouseEnter={e => { e.currentTarget.style.background=dropItmHov; }}
+                      onMouseLeave={e => { e.currentTarget.style.background=''; }}>
+                      <UserCircle size={14} style={{ color: D?'rgba(100,116,139,0.60)':'#94a3b8' }}/>
+                      My Profile
+                    </button>
+
+                    <button onClick={()=>{ navigate('/change-password'); setUserMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-left transition-all"
+                      style={{ color: dropItmC }}
+                      onMouseEnter={e => { e.currentTarget.style.background=dropItmHov; }}
+                      onMouseLeave={e => { e.currentTarget.style.background=''; }}>
+                      <KeyRound size={14} style={{ color: D?'rgba(100,116,139,0.60)':'#94a3b8' }}/>
+                      Change Password
+                    </button>
+
                     {user?.role === 'admin' && (
                       <button onClick={()=>{ navigate('/settings'); setUserMenuOpen(false); }}
                         className="w-full flex items-center gap-3 px-4 py-3 text-sm text-left transition-all"
-                        style={{ color: dropItmC }}
+                        style={{ color: dropItmC, borderTop:`1px solid ${dropDivBdr}` }}
                         onMouseEnter={e => { e.currentTarget.style.background=dropItmHov; }}
                         onMouseLeave={e => { e.currentTarget.style.background=''; }}>
                         <Settings size={14} style={{ color: D?'rgba(100,116,139,0.60)':'#94a3b8' }}/>

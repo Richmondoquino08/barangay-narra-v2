@@ -111,7 +111,7 @@ export default function VerifyCertificate() {
             value={code}
             onChange={(e) => setCode(e.target.value)}
             placeholder="e.g. CERT-A1B2C3D4E5F6A7B8 or certificate ID"
-            className="input-field flex-1"
+            className="input flex-1"
             autoFocus
           />
           <button type="submit" disabled={loading || !code.trim()} className="btn-primary flex items-center gap-1.5 whitespace-nowrap">

@@ -5,6 +5,23 @@ Newest entries first. Each entry lists what changed, why, and which files were t
 
 ---
 
+## 2026-07-22 — Self-service Profile / Change Password, top-bar redesign
+
+**Why:** No way for a logged-in user to view/edit their own account or change their own password without admin help. The top-right user chip also showed the account's literal `full_name` value ("System Administrator" for the seed admin account) as a two-line name+role card — read as generic/impersonal rather than "this is you."
+
+**Changed:**
+- Top-bar user chip simplified to avatar + first name + chevron only (role now shown only inside the dropdown, not the button itself).
+- Dropdown now has **My Profile** and **Change Password**, available to every role (previously only admin had a menu item — Settings — everyone else's dropdown was just Sign Out).
+- New page `frontend/src/pages/Profile.jsx` — edit your own full name/email; view role, email, last login, member since (read-only). Reuses the existing `PUT /api/users/:id` endpoint, which already self-service-safely ignores role changes from non-admins.
+- New page `frontend/src/pages/ChangePassword.jsx` — current/new/confirm form using the existing `POST /api/auth/change-password` endpoint.
+- Fixed a mislabeled CSS class (`input-field`, which doesn't exist) on the certificate-verification page's search box from yesterday's QR feature — it was rendering unstyled; corrected to the real `.input` class.
+
+**Bugs found and fixed along the way:** while testing the new create-user → login → self-update → change-password flow end to end, found the same `const [result] = await pool.query(INSERT...)` destructuring bug (see the 2026-07-22 trash and QR-verification entries) in **`usersController.createUser`** — the admin "add user" API response's `user.id` was silently `undefined`. Fixed the same way (`const [, result] = ...`). No visible symptom today since the Users page just reloads its list after creating a user rather than reading the id back, but confirmed broken via direct test before the fix.
+
+**Scope note — this bug pattern is wider than these three spots.** A grep across `backend/controllers` for `const [result] = await (pool|db).query(` turns up **16 occurrences** (`authController.js`, `certificatesController.js` ×3, `blotterController.js`, `financeController.js` ×3, `announcementController.js`, `requestController.js`, `documentController.js`, `usersController.js` ×2, `residentController.js` ×3). Not all are necessarily broken — it only bites when the code afterward reads `result.affectedRows` or `result.insertId` — but each one needs individual verification. This is a systemic, pre-existing pattern, not something introduced this session. Recommend a dedicated pass to check and fix all of them rather than continuing to find them one at a time; out of scope for today's changes, not fixed beyond the three already listed.
+
+---
+
 ## 2026-07-22 — Certificate verification (QR code)
 
 **Why:** Certificates already print a QR code, but nothing on the system side ever reads it back — there was no way for staff to confirm a certificate someone hands in was actually issued by this office. Scoped to **internal/staff use only** (not a public-facing portal) since the system is Tailscale-only and not reachable from the outside anyway; a public verification page is a separate decision for later.

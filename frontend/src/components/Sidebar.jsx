@@ -82,8 +82,6 @@ export default function Sidebar({ isOpen, onToggle, isMobile = false, onClose })
   const isActive = path => location.pathname === path ||
     (path !== '/dashboard' && !path.endsWith('-dashboard') && location.pathname.startsWith(path));
 
-  const initials   = user?.full_name?.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() || 'U';
-  const roleLabel  = { admin:'Administrator', secretary:'Secretary', captain:'Punong Barangay', treasurer:'Treasurer' };
   const roleColors = { admin:'#6366f1', secretary:'#10b981', captain:'#3b82f6', treasurer:'#f59e0b' };
   const roleColor  = roleColors[user?.role] || '#6366f1';
 
@@ -101,8 +99,6 @@ export default function Sidebar({ isOpen, onToggle, isMobile = false, onClose })
   const sideBox   = D ? '4px 0 32px rgba(0,0,0,0.35), 1px 0 0 rgba(255,255,255,0.04)'
                       : '4px 0 24px rgba(0,0,0,0.07), 1px 0 0 rgba(0,0,0,0.05)';
   const divider   = D ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.07)';
-  const chipBg    = D ? 'rgba(255,255,255,0.04)'  : 'rgba(0,0,0,0.04)';
-  const chipBdr   = D ? 'rgba(255,255,255,0.07)'  : 'rgba(0,0,0,0.07)';
   const nameColor = D ? '#f1f5f9' : '#0f172a';
   const secColor  = D ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.25)';
   const inactiveC = D ? 'rgba(255,255,255,0.38)' : 'rgba(71,85,105,0.75)';
@@ -161,35 +157,6 @@ export default function Sidebar({ isOpen, onToggle, isMobile = false, onClose })
             </button>
           )}
         </div>
-
-        {/* ── User chip ──────────────────────────────────────────── */}
-        {isOpen ? (
-          <div className="flex-shrink-0 mx-3 mt-3 p-3 rounded-2xl relative overflow-hidden"
-            style={{ background: chipBg, border:`1px solid ${chipBdr}` }}>
-            <div className="absolute inset-0 pointer-events-none"
-              style={{ background:`radial-gradient(ellipse at 0% 50%,${roleColor}18 0%,transparent 60%)` }}/>
-            <div className="flex items-center gap-2.5 relative">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[12px] font-black flex-shrink-0 text-white"
-                style={{ background:`linear-gradient(135deg,${roleColor},${roleColor}aa)`, boxShadow:`0 4px 12px ${roleColor}55` }}>
-                {initials}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold truncate leading-none" style={{ color: nameColor }}>{user?.full_name}</p>
-                <p className="text-[10px] mt-1 font-semibold px-1.5 py-0.5 rounded-md inline-block"
-                  style={{ background:`${roleColor}22`, color: roleColor }}>
-                  {roleLabel[user?.role] || user?.role}
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex-shrink-0 flex justify-center mt-3 px-2">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[12px] font-black text-white"
-              style={{ background:`linear-gradient(135deg,${roleColor},${roleColor}aa)`, boxShadow:`0 4px 12px ${roleColor}55` }}>
-              {initials}
-            </div>
-          </div>
-        )}
 
         {/* ── Navigation ─────────────────────────────────────────── */}
         <nav className="sidebar-nav flex-1 px-2 py-3 overflow-y-auto overflow-x-hidden min-h-0 space-y-0.5">

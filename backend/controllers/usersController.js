@@ -66,7 +66,7 @@ exports.createUser = async (req, res) => {
 
     const hashedPassword = await bcryptjs.hash(password, 10);
 
-    const [result] = await pool.query(
+    const [, result] = await pool.query(
       'INSERT INTO users (full_name, email, password, role, is_active) VALUES (?, ?, ?, ?, true)',
       [full_name, email, hashedPassword, role]
     );

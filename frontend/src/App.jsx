@@ -16,6 +16,8 @@ import Announcements from './pages/Announcements';
 import Documents from './pages/Documents';
 import Trash from './pages/Trash';
 import VerifyCertificate from './pages/VerifyCertificate';
+import Profile from './pages/Profile';
+import ChangePassword from './pages/ChangePassword';
 import Settings from './pages/Settings';
 import Officials from './pages/Officials';
 import Projects from './pages/Projects';
@@ -148,6 +150,10 @@ function AppRoutes() {
       <Route path="/users"    element={wrap(Users,    ['admin'])} />
       <Route path="/settings" element={wrap(Settings, ['admin'])} />
       <Route path="/trash"    element={wrap(Trash,    ['admin','secretary'])} />
+
+      {/* Account (any authenticated user) */}
+      <Route path="/profile"         element={wrap(Profile)} />
+      <Route path="/change-password" element={wrap(ChangePassword)} />
 
       <Route path="/"  element={<Navigate to="/dashboard" replace />} />
       <Route path="*"  element={<Navigate to="/dashboard" replace />} />
