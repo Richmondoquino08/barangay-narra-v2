@@ -425,8 +425,12 @@ export default function Certificates() {
         city:                sysSettings.city_municipality || '',
         office_label:        true,
         custom_header_image: '',
+        logo_size:  76,
+        logo_gap:   8,
+        text_size:  10.5,
+        name_size:  16,
       },
-      style: { show_border: true, border_color: '#16a34a' },
+      style: { show_border: true, border_color: '#16a34a', title_size: 14 },
       title: (CERT_TYPES.find(t => t.value === c.certificate_type)?.label || c.certificate_type).toUpperCase(),
       body: `\tThis is to certify that {{resident_name}} is a bonafide resident of {{barangay_name}}, {{city}}, {{province}}.\n\n\tThis certification is issued upon the request of the above-named person for the purpose of {{purpose}}. This document can be used for any legal purpose it may serve.\n\nIssued this {{date}} at Barangay Hall of {{barangay_name}}, {{city}}, {{province}}.`,
       footer: {

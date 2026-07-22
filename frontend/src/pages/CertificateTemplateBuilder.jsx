@@ -448,28 +448,28 @@ function CertPreview({ config, sampleData, scale = 0.55 }) {
         {headerImg ? (
           <img src={headerImg} alt="Header" style={{ width:'100%', maxHeight: 100*scale, objectFit:'cover', display:'block' }}/>
         ) : (
-          <div style={{ display:'flex', alignItems:'center', gap: 7*scale, borderBottom: `${2*scale}px solid ${borderColor}`, paddingBottom: 10*scale, marginBottom: 10*scale }}>
-            {logoL && <img src={logoL} style={{ width: 76*scale, height: 76*scale, objectFit:'contain', flexShrink: 0 }} alt="L"/>}
+          <div style={{ display:'flex', alignItems:'center', gap: (config.header.logo_gap ?? 8)*scale, borderBottom: `${2*scale}px solid ${borderColor}`, paddingBottom: 10*scale, marginBottom: 10*scale }}>
+            {logoL && <img src={logoL} style={{ width: (config.header.logo_size ?? 76)*scale, height: (config.header.logo_size ?? 76)*scale, objectFit:'contain', flexShrink: 0 }} alt="L"/>}
             <div style={{ flex:1, textAlign:'center' }}>
-              {config.header.show_republic !== false && <p style={{ margin:0, fontSize:10.5*scale, color:'#555' }}>REPUBLIC OF THE PHILIPPINES</p>}
-              {config.header.province && <p style={{ margin:0, fontSize:10.5*scale, color:'#555' }}>{withLocationPrefix('PROVINCE OF', config.header.province)}</p>}
-              {config.header.city && <p style={{ margin:0, fontSize:10.5*scale, color:'#555' }}>{withLocationPrefix('CITY OF', config.header.city)}</p>}
-              <p style={{ margin:`${3*scale}px 0 0`, fontSize:15*scale, fontWeight:'bold' }}>{config.header.barangay_name || 'BARANGAY NAME'}</p>
+              {config.header.show_republic !== false && <p style={{ margin:0, fontSize:(config.header.text_size ?? 10.5)*scale, color:'#555' }}>REPUBLIC OF THE PHILIPPINES</p>}
+              {config.header.province && <p style={{ margin:0, fontSize:(config.header.text_size ?? 10.5)*scale, color:'#555' }}>{withLocationPrefix('PROVINCE OF', config.header.province)}</p>}
+              {config.header.city && <p style={{ margin:0, fontSize:(config.header.text_size ?? 10.5)*scale, color:'#555' }}>{withLocationPrefix('CITY OF', config.header.city)}</p>}
+              <p style={{ margin:`${3*scale}px 0 0`, fontSize:(config.header.name_size ?? 16)*scale, fontWeight:'bold' }}>{config.header.barangay_name || 'BARANGAY NAME'}</p>
               {config.header.office_label !== false && (
                 <>
                   <div style={{ borderTop:`${1*scale}px solid ${borderColor}`, margin:`${4*scale}px auto`, width:'60%' }}/>
-                  <p style={{ margin:0, fontSize:10.5*scale }}>OFFICE OF THE PUNONG BARANGAY</p>
+                  <p style={{ margin:0, fontSize:(config.header.text_size ?? 10.5)*scale }}>OFFICE OF THE PUNONG BARANGAY</p>
                 </>
               )}
             </div>
-            {logoR && <img src={logoR} style={{ width: 76*scale, height: 76*scale, objectFit:'contain', flexShrink: 0 }} alt="R"/>}
-            {!logoR && logoL && <div style={{ width: 76*scale, flexShrink: 0 }}/>}
+            {logoR && <img src={logoR} style={{ width: (config.header.logo_size ?? 76)*scale, height: (config.header.logo_size ?? 76)*scale, objectFit:'contain', flexShrink: 0 }} alt="R"/>}
+            {!logoR && logoL && <div style={{ width: (config.header.logo_size ?? 76)*scale, flexShrink: 0 }}/>}
           </div>
         )}
 
         {/* Title */}
         <div style={{ textAlign:'center', margin:`${14*scale}px 0 ${10*scale}px` }}>
-          <p style={{ margin:0, fontWeight:'bold', fontSize:14*scale, textDecoration:'underline', letterSpacing: 2*scale }}>{config.title}</p>
+          <p style={{ margin:0, fontWeight:'bold', fontSize:(config.style?.title_size ?? 14)*scale, textDecoration:'underline', letterSpacing: 2*scale }}>{config.title}</p>
         </div>
 
         {/* Body — fill() escapes all interpolated values then adds trusted <strong> tags.
@@ -822,6 +822,34 @@ export default function CertificateTemplateBuilder({ initial, settings, onSaved,
                   <span className="text-sm text-gray-700 dark:text-slate-300">Show "Office of the Punong Barangay"</span>
                 </label>
               </div>
+
+              {/* Header layout — logo size/gap and text size, all in points (1pt = 1/72in) */}
+              <div className="pt-2 border-t border-gray-100 dark:border-[#2e334a]">
+                <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-2">Header Layout</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="label">Logo Size (pt)</label>
+                    <input type="number" min="20" max="150" step="1" className="input" value={config.header.logo_size ?? 76}
+                      onChange={e => setH('logo_size', parseFloat(e.target.value) || 76)}/>
+                  </div>
+                  <div>
+                    <label className="label">Logo Gap (pt)</label>
+                    <input type="number" min="0" max="60" step="1" className="input" value={config.header.logo_gap ?? 8}
+                      onChange={e => setH('logo_gap', parseFloat(e.target.value) || 0)}/>
+                  </div>
+                  <div>
+                    <label className="label">Header Text (pt)</label>
+                    <input type="number" min="6" max="20" step="0.5" className="input" value={config.header.text_size ?? 10.5}
+                      onChange={e => setH('text_size', parseFloat(e.target.value) || 10.5)}/>
+                  </div>
+                  <div>
+                    <label className="label">Barangay Name (pt)</label>
+                    <input type="number" min="8" max="28" step="0.5" className="input" value={config.header.name_size ?? 16}
+                      onChange={e => setH('name_size', parseFloat(e.target.value) || 16)}/>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">Lower Logo Gap to bring the seals closer to the center text.</p>
+              </div>
             </div>
 
             {/* Certificate title + border */}
@@ -831,6 +859,11 @@ export default function CertificateTemplateBuilder({ initial, settings, onSaved,
                 <input className="input uppercase font-bold tracking-widest" value={config.title}
                   onChange={e => setConfig(p => ({ ...p, title: e.target.value }))}
                   placeholder="e.g. CERTIFICATE OF RESIDENCY"/>
+              </div>
+              <div>
+                <label className="label">Title Size (pt)</label>
+                <input type="number" min="8" max="28" step="0.5" className="input max-w-[140px]" value={config.style?.title_size ?? 14}
+                  onChange={e => setSt('title_size', parseFloat(e.target.value) || 14)}/>
               </div>
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">

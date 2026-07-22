@@ -116,18 +116,26 @@ export function openPrintPreview(config, data, certId) {
        <p style="margin:2pt 0 0;font-size:9pt;">${config.footer.secretary_title || 'Barangay Secretary / By Authority'}</p>`
     : '';
 
+  // Header layout — all tunable per-template from the Layout tab (with these
+  // as fallback defaults for templates saved before those controls existed).
+  const logoSize = config.header.logo_size ?? 76;
+  const logoGap  = config.header.logo_gap  ?? 8;
+  const textSize = config.header.text_size ?? 10.5;
+  const nameSize = config.header.name_size ?? 16;
+  const titleSize = config.style?.title_size ?? 14;
+
   const headerBlock = headerImg
     ? `<img src="${headerImg}" style="width:100%;display:block;max-height:120pt;object-fit:cover;">`
-    : `<div style="display:flex;align-items:center;gap:8pt;border-bottom:2pt solid ${borderColor};padding-bottom:10pt;margin-bottom:10pt;">
-        ${logoL ? `<img src="${logoL}" style="width:76pt;height:76pt;object-fit:contain;flex-shrink:0;">` : ''}
+    : `<div style="display:flex;align-items:center;gap:${logoGap}pt;border-bottom:2pt solid ${borderColor};padding-bottom:10pt;margin-bottom:10pt;">
+        ${logoL ? `<img src="${logoL}" style="width:${logoSize}pt;height:${logoSize}pt;object-fit:contain;flex-shrink:0;">` : ''}
         <div style="flex:1;text-align:center;">
-          ${config.header.show_republic !== false ? '<p style="margin:0;font-size:10.5pt;color:#555;">REPUBLIC OF THE PHILIPPINES</p>' : ''}
-          ${config.header.province ? `<p style="margin:0;font-size:10.5pt;color:#555;">${withLocationPrefix('PROVINCE OF', config.header.province)}</p>` : ''}
-          ${config.header.city ? `<p style="margin:0;font-size:10.5pt;color:#555;">${withLocationPrefix('CITY OF', config.header.city)}</p>` : ''}
-          <p style="margin:4pt 0 0;font-size:16pt;font-weight:bold;">${config.header.barangay_name || 'BARANGAY'}</p>
-          ${config.header.office_label !== false ? `<div style="border-top:1pt solid ${borderColor};width:60%;margin:4pt auto;"></div><p style="margin:0;font-size:10.5pt;">OFFICE OF THE PUNONG BARANGAY</p>` : ''}
+          ${config.header.show_republic !== false ? `<p style="margin:0;font-size:${textSize}pt;color:#555;">REPUBLIC OF THE PHILIPPINES</p>` : ''}
+          ${config.header.province ? `<p style="margin:0;font-size:${textSize}pt;color:#555;">${withLocationPrefix('PROVINCE OF', config.header.province)}</p>` : ''}
+          ${config.header.city ? `<p style="margin:0;font-size:${textSize}pt;color:#555;">${withLocationPrefix('CITY OF', config.header.city)}</p>` : ''}
+          <p style="margin:4pt 0 0;font-size:${nameSize}pt;font-weight:bold;">${config.header.barangay_name || 'BARANGAY'}</p>
+          ${config.header.office_label !== false ? `<div style="border-top:1pt solid ${borderColor};width:60%;margin:4pt auto;"></div><p style="margin:0;font-size:${textSize}pt;">OFFICE OF THE PUNONG BARANGAY</p>` : ''}
         </div>
-        ${logoR ? `<img src="${logoR}" style="width:76pt;height:76pt;object-fit:contain;flex-shrink:0;">` : (logoL ? '<div style="width:76pt;flex-shrink:0;"></div>' : '')}
+        ${logoR ? `<img src="${logoR}" style="width:${logoSize}pt;height:${logoSize}pt;object-fit:contain;flex-shrink:0;">` : (logoL ? `<div style="width:${logoSize}pt;flex-shrink:0;"></div>` : '')}
       </div>`;
 
   const fmt = n => n ? `₱${Number(n).toLocaleString('en-PH',{minimumFractionDigits:2})}` : '';
@@ -261,7 +269,7 @@ export function openPrintPreview(config, data, certId) {
         <!-- Title — editable -->
         <div style="text-align:center;margin:12pt 0 8pt;"
              contenteditable="true" spellcheck="false">
-          <p style="margin:0;font-weight:bold;font-size:14pt;text-decoration:underline;letter-spacing:2px;">${config.title}</p>
+          <p style="margin:0;font-weight:bold;font-size:${titleSize}pt;text-decoration:underline;letter-spacing:2px;">${config.title}</p>
         </div>
 
         <!-- Body — fully editable -->

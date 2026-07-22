@@ -5,6 +5,23 @@ Newest entries first. Each entry lists what changed, why, and which files were t
 
 ---
 
+## 2026-07-23 — Certificate header layout is now tunable per template (no more hardcoded guesses)
+
+**Why:** After the previous letterhead size bump, a screenshot of a real generated certificate (with arrows drawn on it) showed the logos were still too far from the center text for this barangay's taste. Rather than keep guessing new hardcoded numbers from photos, added direct controls so any template can be tuned exactly as wanted.
+
+**New controls, in the Template Builder's Header tab:**
+- **Logo Size** (pt) — both seals, was fixed at 76pt
+- **Logo Gap** (pt) — space between each logo and the center text block, was fixed at 8pt; this is the one to lower to bring the seals in closer
+- **Header Text** (pt) — Republic/Province/City/Office-label lines, was fixed at 10.5pt
+- **Barangay Name** (pt) — was fixed at 16pt
+- **Title Size** (pt) — the certificate title (e.g. "BARANGAY CLEARANCE"), was fixed at 14pt
+
+All five apply to both the actual print output and the on-screen Template Builder preview identically. Existing templates saved before this change have none of these fields in their stored config — confirmed this is fine, since every read falls back to the same defaults that were previously hardcoded (`logo_size ?? 76`, etc.), so nothing changes for templates nobody touches; the controls only do something once someone adjusts them.
+
+**Files changed:** `frontend/src/pages/CertificateTemplateBuilder.jsx`, `frontend/src/utils/certificatePrint.js`, `frontend/src/pages/Certificates.jsx` (new template defaults).
+
+---
+
 ## 2026-07-23 — Fixed the real cause of "uploaded logo disappears after we push to Debian"
 
 **Why:** Reported as a recurring problem: the barangay/city logos in Settings would vanish after a deployment. Investigated instead of guessing, and found the actual cause — a real, serious bug, not a display issue.
