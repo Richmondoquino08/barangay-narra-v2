@@ -10,10 +10,10 @@ import { AlertOctagon, Plus, Pencil, Trash2, Users, Home, CheckCircle, Activity 
 const INCIDENT_TYPES = ['Flood','Fire','Typhoon','Earthquake','Landslide','Storm Surge',
   'Drought','Health Emergency','Vehicular Accident','Industrial Accident','Power Outage','Other'];
 const ALERT_LEVELS = [
-  { value: 'green',  label: 'Green â€“ Normal',     bg: 'bg-emerald-500' },
-  { value: 'yellow', label: 'Yellow â€“ Watch',      bg: 'bg-yellow-400' },
-  { value: 'orange', label: 'Orange â€“ Warning',    bg: 'bg-orange-500' },
-  { value: 'red',    label: 'Red â€“ Critical',      bg: 'bg-red-600' },
+  { value: 'green',  label: 'Green – Normal',     bg: 'bg-emerald-500' },
+  { value: 'yellow', label: 'Yellow – Watch',      bg: 'bg-yellow-400' },
+  { value: 'orange', label: 'Orange – Warning',    bg: 'bg-orange-500' },
+  { value: 'red',    label: 'Red – Critical',      bg: 'bg-red-600' },
 ];
 
 function IncidentForm({ initial, onSave, onCancel, loading }) {
@@ -245,7 +245,7 @@ export default function DRRM() {
               </div>
 
               {i.description && <p className="text-xs text-gray-600 dark:text-slate-300 line-clamp-2">{i.description}</p>}
-              {i.response_actions && <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 line-clamp-1">â†³ {i.response_actions}</p>}
+              {i.response_actions && <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1 line-clamp-1">↳ {i.response_actions}</p>}
             </div>
           ))}
         </div>

@@ -17,14 +17,14 @@ const STATUSES = [
   { value: 'suspended', label: 'Suspended', color: 'text-amber-600 dark:text-amber-400', dot: 'bg-amber-400' },
 ];
 
-// â”€â”€ Days diff helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Days diff helper ──────────────────────────────────────────────────────
 function daysDiff(dateA, dateB) {
   const a = new Date(dateA);
   const b = new Date(dateB);
   return Math.round((b - a) / 86400000);
 }
 
-// â”€â”€ Completion indicator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Completion indicator ──────────────────────────────────────────────────
 function CompletionTag({ p }) {
   if (p.status !== 'completed' || !p.completion_date) return null;
 
@@ -65,7 +65,7 @@ function CompletionTag({ p }) {
   );
 }
 
-// â”€â”€ Inline status dropdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Inline status dropdown ────────────────────────────────────────────────
 function StatusDropdown({ project, onChanged }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -128,7 +128,7 @@ function StatusDropdown({ project, onChanged }) {
   );
 }
 
-// â”€â”€ Project form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Project form ──────────────────────────────────────────────────────────
 function ProjectForm({ initial, onSave, onCancel, loading }) {
   const [form, setForm] = useState(initial || {
     project_name:'', description:'', project_type:'Infrastructure', budget:'',
@@ -163,11 +163,11 @@ function ProjectForm({ initial, onSave, onCancel, loading }) {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="label">Budget (â‚±)</label>
+          <label className="label">Budget (₱)</label>
           <input type="number" min="0" step="0.01" className="input" value={form.budget} onChange={e => set('budget', e.target.value)} />
         </div>
         <div>
-          <label className="label">Amount Spent (â‚±)</label>
+          <label className="label">Amount Spent (₱)</label>
           <input type="number" min="0" step="0.01" className="input" value={form.amount_spent} onChange={e => set('amount_spent', e.target.value)} />
         </div>
       </div>
@@ -210,9 +210,9 @@ function ProjectForm({ initial, onSave, onCancel, loading }) {
   );
 }
 
-const fmt = n => `â‚±${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+const fmt = n => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 
-// â”€â”€ Main page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Main page ─────────────────────────────────────────────────────────────
 export default function Projects() {
   const { hasRole } = useAuth();
   const { toast } = useToast();
@@ -242,11 +242,11 @@ export default function Projects() {
         const { ok, hasBudget, remaining, allocated, requested } = chk.data;
         if (hasBudget && !ok) {
           const proceed = window.confirm(
-            `âš ï¸ Insufficient Budget\n\n` +
+            `⚠️ Insufficient Budget\n\n` +
             `Fund Source: ${form.fund_source}\n` +
-            `Allocated : â‚±${Number(allocated).toLocaleString('en-PH',{minimumFractionDigits:2})}\n` +
-            `Remaining : â‚±${Number(remaining).toLocaleString('en-PH',{minimumFractionDigits:2})}\n` +
-            `Requested : â‚±${Number(requested).toLocaleString('en-PH',{minimumFractionDigits:2})}\n\n` +
+            `Allocated : ₱${Number(allocated).toLocaleString('en-PH',{minimumFractionDigits:2})}\n` +
+            `Remaining : ₱${Number(remaining).toLocaleString('en-PH',{minimumFractionDigits:2})}\n` +
+            `Requested : ₱${Number(requested).toLocaleString('en-PH',{minimumFractionDigits:2})}\n\n` +
             `The barangay does not have enough budget for this fund source.\n` +
             `Proceed anyway? (Admin override)`
           );

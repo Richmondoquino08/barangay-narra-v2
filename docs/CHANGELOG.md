@@ -5,6 +5,18 @@ Newest entries first. Each entry lists what changed, why, and which files were t
 
 ---
 
+## 2026-07-22 — Bug fix: garbled peso signs and special characters (mojibake) across the app
+
+**Why:** Reported as "why does the peso sign show as â‚±150,000.00 on Projects" — a screenshot of the Projects page's Total Budget tile. Investigation found this wasn't a display/rendering issue but literal corrupted bytes committed into the source code: several special characters (₱ peso, — em dash, – en dash, … ellipsis, − minus sign, · middle dot, plus a few emoji like ⚠️/✏️ and the ✓/× symbols) had been saved somewhere along the way as UTF-8 text that was first misread as Windows-1252 and re-saved — the classic "mojibake" double-encoding bug. Once corrupted this way, no browser or font can display it correctly; the actual character in the file is wrong.
+
+**Scope:** affected 5 files — `Projects.jsx` (the reported bug: Budget/Amount Spent labels, the `fmt()` currency formatter, an insufficient-budget confirm dialog), `Reports.jsx` (every generated report — resident masterlists, income/expense/financial ledgers, blotter logbooks, certificates-issued — all had garbled peso signs and "—" placeholders for empty fields), `Settings.jsx` (Monthly Collection Target label, several toast/hint messages, a broken-image warning icon), `CertificateTemplateBuilder.jsx` (hint text, a placeholder-tag separator, Saving… button state), and `DRRM.jsx` (alert level dropdown labels, an incident response-action arrow icon). Also many code comments (section-divider box-drawing characters) were corrupted the same way — cosmetic only, but fixed alongside since the same tool caught them for free.
+
+**Fix approach:** rather than hand-fixing each occurrence, wrote a script that reverses the exact corruption mechanically — for each suspicious character run, converts it back to the Windows-1252 byte values it was misread as, then decodes those bytes as UTF-8 to recover the original character. Applied across all of `frontend/src` and `backend`; only these 5 files had any corruption (confirmed by scanning all 165 source files). Every change was individually reviewed via `git diff` before committing — no false positives.
+
+**Not fixed / out of scope:** this only repairs characters already baked into the source code. If corruption is reintroduced by whatever originally caused it (suspected: a copy-paste or file-save through a tool that assumed the wrong encoding), it would need to be re-run. No recurrence protection was added since the root cause of the *original* corruption event wasn't identified.
+
+---
+
 ## 2026-07-22 — Bug fix: resident pickers only loaded the first 500 (of 2,316) residents
 
 **Why:** Reported as "why can't I find some residents when adding a user" — turned out to be a real bug, not a search problem. Six pages load residents once into a plain array for their search/picker components, capped at a hardcoded page size (`residentsAPI.getAll(1, 500)` or `1000`). With 2,316 total residents in the database, ordered alphabetically by last name, anyone past roughly the 500th (or 1000th) name — e.g. most residents from "C" onward — was silently invisible to search in every one of these pickers. Typing their exact name did nothing because they were never loaded to begin with.

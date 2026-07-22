@@ -11,9 +11,9 @@ function applyFontPreview(size) {
   document.documentElement.style.fontSize = FONT_SIZE_PX[size] || '15px';
 }
 
-// â”€â”€ Upload Zone â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Upload Zone ────────────────────────────────────────────────────────────
 // uploadType: 'logo' | 'background' | 'login-bg'
-// objectFit:  'contain' (logos) | 'cover' (backgrounds) â€” default 'cover'
+// objectFit:  'contain' (logos) | 'cover' (backgrounds) — default 'cover'
 function UploadZone({ label, icon: Icon, uploadType, currentUrl, onUploaded, onCleared,
   accept = 'image/*', hint, objectFit = 'cover' }) {
   const [dragging,     setDragging]     = useState(false);
@@ -45,12 +45,12 @@ function UploadZone({ label, icon: Icon, uploadType, currentUrl, onUploaded, onC
       const res = await apiClient.post(`/settings/upload/${type}`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      setLocalPreview(''); // drop data URL â€” parent will provide server URL via currentUrl
+      setLocalPreview(''); // drop data URL — parent will provide server URL via currentUrl
       onUploaded(res.data.url);
       toast(`${label} updated!`, 'success');
     } catch {
       setLocalPreview('');
-      toast('Upload failed â€” check file type/size.', 'error');
+      toast('Upload failed — check file type/size.', 'error');
     } finally { setUploading(false); }
   };
 
@@ -107,12 +107,12 @@ function UploadZone({ label, icon: Icon, uploadType, currentUrl, onUploaded, onC
             </div>
           </>
         ) : imgBroken ? (
-          /* Image URL in DB but file missing/inaccessible â€” show clear error */
+          /* Image URL in DB but file missing/inaccessible — show clear error */
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-rose-50 dark:bg-rose-900/20 select-none">
-            <span className="text-2xl">âš ï¸</span>
+            <span className="text-2xl">⚠️</span>
             <p className="text-xs font-semibold text-rose-700 dark:text-rose-300">Image file not found</p>
             <p className="text-[10px] text-rose-500 dark:text-rose-400 text-center px-4">
-              The saved image no longer exists on the server.<br/>Click to upload a new one, or use the Ã— to clear.
+              The saved image no longer exists on the server.<br/>Click to upload a new one, or use the × to clear.
             </p>
           </div>
         ) : (
@@ -128,7 +128,7 @@ function UploadZone({ label, icon: Icon, uploadType, currentUrl, onUploaded, onC
           </div>
         )}
 
-        {/* Remove button â€” shown when image is set (even if broken) */}
+        {/* Remove button — shown when image is set (even if broken) */}
         {(previewSrc || imgBroken) && (
           <button
             type="button"
@@ -147,7 +147,7 @@ function UploadZone({ label, icon: Icon, uploadType, currentUrl, onUploaded, onC
   );
 }
 
-// â”€â”€ Downloadable Reference Documents â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Downloadable Reference Documents ──────────────────────────────────────
 function RefDocSection() {
   const { toast } = useToast();
   const [docs, setDocs]         = useState([]);
@@ -294,7 +294,7 @@ function RefDocSection() {
   );
 }
 
-// â”€â”€ Main Settings page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Main Settings page ─────────────────────────────────────────────────────
 export default function Settings() {
   const { toast } = useToast();
   const { refreshSettings } = useTheme();
@@ -435,7 +435,7 @@ export default function Settings() {
 
       <form onSubmit={handleSave} className="space-y-6">
 
-        {/* â”€â”€ GENERAL TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── GENERAL TAB ───────────────────────────────────────────── */}
         {activeTab === 'general' && (
           <div className="card p-6 space-y-5">
             <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
@@ -476,7 +476,7 @@ export default function Settings() {
                   onChange={e => set('captain', e.target.value)} placeholder="Full name"/>
               </div>
               <div>
-                <label className="label">Monthly Collection Target (â‚±)</label>
+                <label className="label">Monthly Collection Target (₱)</label>
                 <input type="number" min="0" step="0.01" className="input"
                   value={form.monthly_collection_target}
                   onChange={e => set('monthly_collection_target', e.target.value)}
@@ -527,7 +527,7 @@ export default function Settings() {
           </div>
         )}
 
-        {/* â”€â”€ APPEARANCE TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── APPEARANCE TAB ────────────────────────────────────────── */}
         {activeTab === 'appearance' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Logo */}
@@ -630,7 +630,7 @@ export default function Settings() {
                 ))}
               </div>
               <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
-                Scales all text in the system. Takes effect immediately â€” save to persist.
+                Scales all text in the system. Takes effect immediately — save to persist.
               </p>
             </div>
 
@@ -700,7 +700,7 @@ export default function Settings() {
           </div>
         )}
 
-        {/* â”€â”€ REPORTS & CERTIFICATES TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── REPORTS & CERTIFICATES TAB ────────────────────────────── */}
         {activeTab === 'reports' && (
           <div className="space-y-6">
             {/* Signatory */}
@@ -735,7 +735,7 @@ export default function Settings() {
                 <PenLine size={16} className="text-emerald-500"/> Second Signatory (By Authority)
               </h3>
               <p className="text-sm text-gray-500 dark:text-slate-400 -mt-3">
-                Appears below the Punong Barangay â€” typically the Barangay Secretary signing "By Authority."
+                Appears below the Punong Barangay — typically the Barangay Secretary signing "By Authority."
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -760,7 +760,7 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Treasurer â€” used as cheque signatory */}
+            {/* Treasurer — used as cheque signatory */}
             <div className="card p-6 space-y-4">
               <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                 <PenLine size={16} className="text-amber-500"/> Barangay Treasurer (Cheque Signatory)
@@ -836,7 +836,7 @@ export default function Settings() {
                   </div>
                 </div>
                 <div className="bg-gray-50 dark:bg-[#22263a] px-4 py-1.5 text-center">
-                  <p className="text-[10px] text-gray-400">Print preview â€” actual output may vary slightly</p>
+                  <p className="text-[10px] text-gray-400">Print preview — actual output may vary slightly</p>
                 </div>
               </div>
             </div>
@@ -846,7 +846,7 @@ export default function Settings() {
           </div>
         )}
 
-        {/* â”€â”€ ACCESS CONTROL TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── ACCESS CONTROL TAB ───────────────────────────────────── */}
         {activeTab === 'access' && (() => {
           const MODULES = [
             { section: 'Records', items: [
@@ -958,11 +958,11 @@ export default function Settings() {
                     <thead>
                       <tr className="border-b border-gray-100 dark:border-[#2e334a]">
                         <th className="text-left py-2 pr-4 text-gray-500 dark:text-slate-400 font-medium w-48">Module</th>
-                        {/* Admin column â€” always locked */}
+                        {/* Admin column — always locked */}
                         <th className="text-center py-2 px-4">
                           <div className="flex flex-col items-center gap-0.5">
                             <span className="font-semibold text-gray-400 dark:text-slate-500">Admin</span>
-                            <span className="text-[10px] text-gray-300 dark:text-slate-600">Always âœ“</span>
+                            <span className="text-[10px] text-gray-300 dark:text-slate-600">Always ✓</span>
                           </div>
                         </th>
                         {ROLES.map(r => (
@@ -1000,7 +1000,7 @@ export default function Settings() {
                           {group.items.map(mod => (
                             <tr key={mod.key} className="border-b border-gray-50 dark:border-[#2e334a]/40 hover:bg-gray-50 dark:hover:bg-[#22263a] transition-colors">
                               <td className="py-2.5 pr-4 pl-2 font-medium text-gray-700 dark:text-slate-200">{mod.label}</td>
-                              {/* Admin â€” locked checked */}
+                              {/* Admin — locked checked */}
                               <td className="text-center py-2.5 px-4">
                                 <div className="inline-flex items-center justify-center w-5 h-5 rounded bg-gray-100 dark:bg-[#2e334a] opacity-50" title="Admin always has access">
                                   <Check size={12} className="text-gray-400"/>
@@ -1037,7 +1037,7 @@ export default function Settings() {
           );
         })()}
 
-        {/* â”€â”€ Save bar (always visible) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Save bar (always visible) ─────────────────────────────── */}
         <div className="flex gap-3 justify-end pt-2 border-t border-gray-100 dark:border-[#2e334a]">
           <button type="button" onClick={() => window.location.reload()}
             className="btn-secondary flex items-center gap-1.5">
@@ -1046,7 +1046,7 @@ export default function Settings() {
           <button type="submit" disabled={saving}
             className="btn-primary flex items-center gap-1.5 min-w-[130px] justify-center">
             {saving
-              ? <><Loader2 size={14} className="animate-spin"/> Savingâ€¦</>
+              ? <><Loader2 size={14} className="animate-spin"/> Saving…</>
               : <><Save size={14}/> Save Settings</>
             }
           </button>

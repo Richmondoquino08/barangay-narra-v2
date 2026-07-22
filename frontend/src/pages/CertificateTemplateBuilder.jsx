@@ -331,7 +331,7 @@ const PLACEHOLDERS = [
   { tag: '{{endorsement_reason}}',   label: 'Endorsement Reason' },
 ];
 
-// â”€â”€ Small image upload zone â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Small image upload zone ────────────────────────────────────────────────
 // If currentUrl is empty but fallbackUrl is given (e.g. the barangay logo
 // configured once in System Settings), the fallback image is shown so staff
 // can see the seal is already automatic — uploading here just overrides it
@@ -371,7 +371,7 @@ function ImageUploadZone({ label, currentUrl, onUploaded, onCleared, hint, fallb
             <img src={displaySrc} alt={label} className="w-full h-full object-contain bg-white dark:bg-[#22263a]"/>
             {usingFallback ? (
               <div className="absolute inset-x-0 bottom-0 bg-emerald-600/90 text-white text-[9px] font-semibold text-center py-0.5">
-                Auto â€” from System Settings
+                Auto — from System Settings
               </div>
             ) : (
               <button type="button" onClick={e => { e.stopPropagation(); onCleared(); }}
@@ -393,7 +393,7 @@ function ImageUploadZone({ label, currentUrl, onUploaded, onCleared, hint, fallb
       </div>
       {usingFallback && (
         <p className="text-[10px] text-emerald-600 dark:text-emerald-400">
-          Using {fallbackLabel || 'the system default'} â€” click to upload a different one just for this template.
+          Using {fallbackLabel || 'the system default'} — click to upload a different one just for this template.
         </p>
       )}
       <input ref={inputRef} type="file" accept="image/*" className="hidden"
@@ -402,7 +402,7 @@ function ImageUploadZone({ label, currentUrl, onUploaded, onCleared, hint, fallb
   );
 }
 
-// â”€â”€ Live certificate preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Live certificate preview ───────────────────────────────────────────────
 function CertPreview({ config, sampleData, scale = 0.55 }) {
   const logoL = config.header.logo_url ? resolveAssetUrl(config.header.logo_url) : '';
   const logoR = config.header.right_logo_url ? resolveAssetUrl(config.header.right_logo_url) : '';
@@ -547,7 +547,7 @@ function CertPreview({ config, sampleData, scale = 0.55 }) {
   );
 }
 
-// â”€â”€ Main builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Main builder ──────────────────────────────────────────────────────────
 export default function CertificateTemplateBuilder({ initial, settings, onSaved, onClose }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -742,7 +742,7 @@ export default function CertificateTemplateBuilder({ initial, settings, onSaved,
           <button onClick={onClose} className="btn-secondary text-sm">Cancel</button>
           <button onClick={handleSave} disabled={saving}
             className="btn-primary flex items-center gap-1.5 text-sm min-w-[110px] justify-center">
-            {saving ? <><Loader2 size={13} className="animate-spin"/> Savingâ€¦</> : <><Save size={13}/> Save</>}
+            {saving ? <><Loader2 size={13} className="animate-spin"/> Saving…</> : <><Save size={13}/> Save</>}
           </button>
         </div>
       </div>
@@ -750,7 +750,7 @@ export default function CertificateTemplateBuilder({ initial, settings, onSaved,
       {/* Section content */}
       <div className="flex-1 overflow-y-auto py-4 space-y-4 min-h-0">
 
-        {/* â”€â”€ HEADER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── HEADER ──────────────────────────────────────────────── */}
         {activeSection === 'header' && (
           <div className="space-y-4">
             {/* Custom letterhead */}
@@ -763,7 +763,7 @@ export default function CertificateTemplateBuilder({ initial, settings, onSaved,
                 currentUrl={config.header.custom_header_image}
                 onUploaded={url => setH('custom_header_image', url)}
                 onCleared={() => setH('custom_header_image', '')}
-                hint="Upload a pre-made letterhead image. Recommended: 900Ã—140px PNG."
+                hint="Upload a pre-made letterhead image. Recommended: 900×140px PNG."
               />
             </div>
 
@@ -881,7 +881,7 @@ export default function CertificateTemplateBuilder({ initial, settings, onSaved,
           </div>
         )}
 
-        {/* â”€â”€ CONTENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── CONTENT ─────────────────────────────────────────────── */}
         {activeSection === 'content' && (
           <div className="space-y-4">
             <div className="card p-4">
@@ -892,7 +892,7 @@ export default function CertificateTemplateBuilder({ initial, settings, onSaved,
                 {PLACEHOLDERS.map(p => (
                   <button key={p.tag} type="button" onClick={() => insertPlaceholder(p.tag)}
                     className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 text-xs font-mono hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition border border-indigo-200 dark:border-indigo-800">
-                    {p.tag} <span className="font-sans text-gray-400">Â· {p.label}</span>
+                    {p.tag} <span className="font-sans text-gray-400">· {p.label}</span>
                   </button>
                 ))}
               </div>
@@ -912,7 +912,7 @@ export default function CertificateTemplateBuilder({ initial, settings, onSaved,
           </div>
         )}
 
-        {/* â”€â”€ FOOTER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── FOOTER ──────────────────────────────────────────────── */}
         {activeSection === 'footer' && (
           <div className="space-y-4">
             {/* Primary signatory */}
@@ -991,7 +991,7 @@ export default function CertificateTemplateBuilder({ initial, settings, onSaved,
           </div>
         )}
 
-        {/* â”€â”€ PREVIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── PREVIEW ─────────────────────────────────────────────── */}
         {activeSection === 'preview' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">

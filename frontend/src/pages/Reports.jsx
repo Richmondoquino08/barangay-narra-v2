@@ -21,7 +21,7 @@ const REPORT_TYPES = [
   { id: 'certs_by_type',    label: 'Certificates by Type',   icon: FileText,      desc: 'Certificate count grouped by type',         color: '#22c55e', from:'#22c55e', to:'#16a34a' },
 ];
 
-// â”€â”€ Build the HTML header block used in all print windows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Build the HTML header block used in all print windows ──────────────────
 function buildHeader(settings, reportTitle) {
   const borderColor = '#16a34a';
   const logoL = settings.logo_url       ? resolveAssetUrl(settings.logo_url)       : '';
@@ -57,7 +57,7 @@ function buildHeader(settings, reportTitle) {
   `.trim();
 }
 
-// â”€â”€ Build the signature block â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Build the signature block ──────────────────────────────────────────────
 function buildSignature(settings) {
   const sigName  = settings.signatory_name  || settings.captain || 'PUNONG BARANGAY';
   const sigTitle = settings.signatory_title || 'Punong Barangay';
@@ -71,7 +71,7 @@ function buildSignature(settings) {
   `;
 }
 
-// â”€â”€ Print a table report â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Print a table report ───────────────────────────────────────────────────
 function printTable(settings, title, headers, rows) {
   const w = window.open('', '_blank', 'width=1100,height=750');
   w.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
@@ -114,7 +114,7 @@ function printTable(settings, title, headers, rows) {
     }
   </style></head><body>
 
-  <!-- â”€â”€ Toolbar â”€â”€ -->
+  <!-- ── Toolbar ── -->
   <div class="no-print" style="
     position:fixed;top:0;left:0;right:0;z-index:999;
     background:#1e3a5f;color:#fff;
@@ -122,7 +122,7 @@ function printTable(settings, title, headers, rows) {
     padding:10px 20px;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,0.3);
     font-family:Arial,sans-serif;font-size:13px;">
     <div style="display:flex;align-items:center;gap:12px;">
-      <span style="font-size:18px;">âœï¸</span>
+      <span style="font-size:18px;">✏️</span>
       <div>
         <p style="margin:0;font-weight:bold;color:#fff;">Edit Before Printing</p>
         <p style="margin:0;font-size:11px;color:#93c5fd;">Click any text to edit. Changes are for this print only.</p>
@@ -152,13 +152,13 @@ function printTable(settings, title, headers, rows) {
     </button>
   </div>
 
-  <!-- â”€â”€ Report Content â”€â”€ -->
+  <!-- ── Report Content ── -->
   <div class="report-page" id="report-body">
     ${buildHeader(settings, title)}
     <table>
       <thead><tr>${headers.map(h => `<th contenteditable="true" spellcheck="false">${h}</th>`).join('')}</tr></thead>
       <tbody>
-        ${rows.map(r => `<tr>${r.map(c => `<td contenteditable="true" spellcheck="false">${c ?? 'â€”'}</td>`).join('')}</tr>`).join('')}
+        ${rows.map(r => `<tr>${r.map(c => `<td contenteditable="true" spellcheck="false">${c ?? '—'}</td>`).join('')}</tr>`).join('')}
       </tbody>
     </table>
     <p class="footer-note" contenteditable="true" spellcheck="false">Total records: ${rows.length}</p>
@@ -190,8 +190,8 @@ export default function Reports() {
       if (selected === 'residents_all') {
         const res = await residentsAPI.getAll(1, 10000, {});
         const rows = (res.data.residents || []).map(r => [
-          r.full_name, r.gender, r.age, r.purok||'â€”', r.address,
-          r.civil_status, r.contact_number||'â€”', r.occupation||'â€”',
+          r.full_name, r.gender, r.age, r.purok||'—', r.address,
+          r.civil_status, r.contact_number||'—', r.occupation||'—',
           r.voter_status?'Yes':'No', r.senior_citizen?'Yes':'No', r.is_pwd?'Yes':'No', r.is_4ps?'Yes':'No'
         ]);
         printTable(settings, 'Resident Masterlist',
@@ -199,22 +199,22 @@ export default function Reports() {
 
       } else if (selected === 'residents_voters') {
         const res = await residentsAPI.getAll(1, 10000, { voter_status: 'true' });
-        const rows = (res.data.residents || []).map(r => [r.full_name, r.gender, r.age, r.purok||'â€”', r.address, r.contact_number||'â€”']);
+        const rows = (res.data.residents || []).map(r => [r.full_name, r.gender, r.age, r.purok||'—', r.address, r.contact_number||'—']);
         printTable(settings, 'Registered Voters List', ['Full Name','Gender','Age','Purok','Address','Contact'], rows);
 
       } else if (selected === 'residents_senior') {
         const res = await residentsAPI.getAll(1, 10000, { senior_citizen: 'true' });
-        const rows = (res.data.residents || []).map(r => [r.full_name, r.gender, r.age, r.purok||'â€”', r.address, r.contact_number||'â€”']);
+        const rows = (res.data.residents || []).map(r => [r.full_name, r.gender, r.age, r.purok||'—', r.address, r.contact_number||'—']);
         printTable(settings, 'Senior Citizens List', ['Full Name','Gender','Age','Purok','Address','Contact'], rows);
 
       } else if (selected === 'residents_pwd') {
         const res = await residentsAPI.getAll(1, 10000, { is_pwd: 'true' });
-        const rows = (res.data.residents || []).map(r => [r.full_name, r.gender, r.age, r.purok||'â€”', r.address, r.contact_number||'â€”']);
+        const rows = (res.data.residents || []).map(r => [r.full_name, r.gender, r.age, r.purok||'—', r.address, r.contact_number||'—']);
         printTable(settings, 'PWD Masterlist', ['Full Name','Gender','Age','Purok','Address','Contact'], rows);
 
       } else if (selected === 'residents_4ps') {
         const res = await residentsAPI.getAll(1, 10000, { is_4ps: 'true' });
-        const rows = (res.data.residents || []).map(r => [r.full_name, r.gender, r.age, r.purok||'â€”', r.address, r.contact_number||'â€”']);
+        const rows = (res.data.residents || []).map(r => [r.full_name, r.gender, r.age, r.purok||'—', r.address, r.contact_number||'—']);
         printTable(settings, '4Ps Beneficiaries List', ['Full Name','Gender','Age','Purok','Address','Contact'], rows);
 
       } else if (selected === 'finance_income') {
@@ -226,10 +226,10 @@ export default function Reports() {
         const total = list.reduce((s,f) => s + Number(f.amount||0), 0);
         const rows = list.map(f => [
           new Date(f.transaction_date).toLocaleDateString('en-PH'), f.description,
-          f.category||'â€”', f.payment_method||'â€”', f.receipt_number||'â€”',
-          `â‚±${Number(f.amount).toLocaleString('en-PH',{minimumFractionDigits:2})}`
+          f.category||'—', f.payment_method||'—', f.receipt_number||'—',
+          `₱${Number(f.amount).toLocaleString('en-PH',{minimumFractionDigits:2})}`
         ]);
-        rows.push(['','','','','TOTAL', `â‚±${total.toLocaleString('en-PH',{minimumFractionDigits:2})}`]);
+        rows.push(['','','','','TOTAL', `₱${total.toLocaleString('en-PH',{minimumFractionDigits:2})}`]);
         printTable(settings, 'Income Summary', ['Date','Description','Category','Payment Method','O.R. #','Amount'], rows);
 
       } else if (selected === 'finance_expense') {
@@ -241,10 +241,10 @@ export default function Reports() {
         const total = list.reduce((s,f) => s + Number(f.amount||0), 0);
         const rows = list.map(f => [
           new Date(f.transaction_date).toLocaleDateString('en-PH'), f.description,
-          f.category||'â€”', f.payment_method||'â€”',
-          `â‚±${Number(f.amount).toLocaleString('en-PH',{minimumFractionDigits:2})}`
+          f.category||'—', f.payment_method||'—',
+          `₱${Number(f.amount).toLocaleString('en-PH',{minimumFractionDigits:2})}`
         ]);
-        rows.push(['','','','TOTAL', `â‚±${total.toLocaleString('en-PH',{minimumFractionDigits:2})}`]);
+        rows.push(['','','','TOTAL', `₱${total.toLocaleString('en-PH',{minimumFractionDigits:2})}`]);
         printTable(settings, 'Expense Summary', ['Date','Description','Category','Payment Method','Amount'], rows);
 
       } else if (selected === 'finance_all') {
@@ -258,22 +258,22 @@ export default function Reports() {
         const rows = list.map(f => [
           new Date(f.transaction_date).toLocaleDateString('en-PH'),
           f.transaction_type.toUpperCase(),
-          f.description, f.category||'â€”', f.payment_method||'â€”', f.receipt_number||'â€”',
-          `${f.transaction_type==='expense'?'âˆ’':''}â‚±${Number(f.amount).toLocaleString('en-PH',{minimumFractionDigits:2})}`
+          f.description, f.category||'—', f.payment_method||'—', f.receipt_number||'—',
+          `${f.transaction_type==='expense'?'−':''}₱${Number(f.amount).toLocaleString('en-PH',{minimumFractionDigits:2})}`
         ]);
-        rows.push(['','INCOME','','','','Total', `â‚±${income.toLocaleString('en-PH',{minimumFractionDigits:2})}`]);
-        rows.push(['','EXPENSE','','','','Total', `â‚±${expense.toLocaleString('en-PH',{minimumFractionDigits:2})}`]);
-        rows.push(['','NET BALANCE','','','','', `â‚±${(income-expense).toLocaleString('en-PH',{minimumFractionDigits:2})}`]);
+        rows.push(['','INCOME','','','','Total', `₱${income.toLocaleString('en-PH',{minimumFractionDigits:2})}`]);
+        rows.push(['','EXPENSE','','','','Total', `₱${expense.toLocaleString('en-PH',{minimumFractionDigits:2})}`]);
+        rows.push(['','NET BALANCE','','','','', `₱${(income-expense).toLocaleString('en-PH',{minimumFractionDigits:2})}`]);
         printTable(settings, 'Financial Ledger', ['Date','Type','Description','Category','Payment','O.R. #','Amount'], rows);
 
       } else if (selected === 'blotter_all') {
         const res = await blotterAPI.getAll({});
         const rows = (res.data.records || []).map(r => [
           r.case_number, r.incident_type,
-          r.complainant_name||r.complainant_name_manual||'â€”',
-          r.respondent_name||r.respondent_name_manual||'â€”',
-          r.incident_date ? new Date(r.incident_date).toLocaleDateString('en-PH') : 'â€”',
-          r.incident_location||'â€”', r.status, r.kagawad_assigned||'â€”'
+          r.complainant_name||r.complainant_name_manual||'—',
+          r.respondent_name||r.respondent_name_manual||'—',
+          r.incident_date ? new Date(r.incident_date).toLocaleDateString('en-PH') : '—',
+          r.incident_location||'—', r.status, r.kagawad_assigned||'—'
         ]);
         printTable(settings, 'Blotter Logbook',
           ['Case #','Type','Complainant','Respondent','Date','Location','Status','Kagawad'], rows);
@@ -282,10 +282,10 @@ export default function Reports() {
         const res = await blotterAPI.getAll({ status: 'pending' });
         const rows = (res.data.records || []).map(r => [
           r.case_number, r.incident_type,
-          r.complainant_name||r.complainant_name_manual||'â€”',
-          r.respondent_name||r.respondent_name_manual||'â€”',
-          r.incident_date ? new Date(r.incident_date).toLocaleDateString('en-PH') : 'â€”',
-          r.kagawad_assigned||'â€”'
+          r.complainant_name||r.complainant_name_manual||'—',
+          r.respondent_name||r.respondent_name_manual||'—',
+          r.incident_date ? new Date(r.incident_date).toLocaleDateString('en-PH') : '—',
+          r.kagawad_assigned||'—'
         ]);
         printTable(settings, 'Pending Blotter Cases',
           ['Case #','Type','Complainant','Respondent','Date','Kagawad'], rows);
@@ -295,8 +295,8 @@ export default function Reports() {
         const rows = (res.data.certificates || []).map(c => [
           c.resident_name,
           c.certificate_type.replace(/_/g,' '),
-          c.purpose||'â€”', c.or_number||'â€”',
-          c.fee > 0 ? `â‚±${Number(c.fee).toLocaleString('en-PH')}` : 'Free',
+          c.purpose||'—', c.or_number||'—',
+          c.fee > 0 ? `₱${Number(c.fee).toLocaleString('en-PH')}` : 'Free',
           c.status, new Date(c.created_at).toLocaleDateString('en-PH')
         ]);
         printTable(settings, 'Certificates Issued',
@@ -313,7 +313,7 @@ export default function Reports() {
         printTable(settings, 'Certificates by Type', ['Certificate Type','Count'], rows);
       }
 
-      toast('Report generated â€” check the new window', 'success');
+      toast('Report generated — check the new window', 'success');
     } catch (err) {
       toast('Failed to generate report: ' + (err.message || 'Unknown error'), 'error');
     } finally { setGenerating(false); }
@@ -330,14 +330,14 @@ export default function Reports() {
             <BarChart2 size={22} className="text-indigo-600"/> Reports Generator
           </h1>
           <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">
-            {REPORT_TYPES.length} report types Â· Header uses barangay settings
+            {REPORT_TYPES.length} report types · Header uses barangay settings
           </p>
         </div>
         {/* Settings shortcut */}
         {settings.barangay_name ? (
           <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400 bg-white dark:bg-[#1a1d27] border border-gray-100 dark:border-[#2e334a] rounded-xl px-3 py-2 shadow-sm">
             <Settings size={13} className="text-indigo-500"/>
-            <span>Header: <strong>{settings.barangay_name}</strong> Â· Signed by: <strong>{settings.signatory_name || settings.captain || 'â€”'}</strong></span>
+            <span>Header: <strong>{settings.barangay_name}</strong> · Signed by: <strong>{settings.signatory_name || settings.captain || '—'}</strong></span>
           </div>
         ) : (
           <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-2">
@@ -447,12 +447,12 @@ export default function Reports() {
             <button onClick={generateReport} disabled={generating}
               className="btn-primary flex items-center gap-2 min-w-[180px] justify-center">
               {generating
-                ? <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"/> Generatingâ€¦</>
+                ? <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"/> Generating…</>
                 : <><Printer size={15}/> Generate &amp; Print</>
               }
             </button>
             <p className="text-xs text-gray-400 dark:text-slate-500">
-              Opens in a new window Â· Print or Save as PDF
+              Opens in a new window · Print or Save as PDF
             </p>
           </div>
 
@@ -463,7 +463,7 @@ export default function Reports() {
             </div>
             <div className="p-3 text-xs text-gray-700 dark:text-slate-300 space-y-0.5 font-mono">
               <p className="text-center text-gray-400">Republic of the Philippines</p>
-              <p className="text-center font-bold">{settings.barangay_name || '[ Barangay Name â€” set in Settings ]'}</p>
+              <p className="text-center font-bold">{settings.barangay_name || '[ Barangay Name — set in Settings ]'}</p>
               <p className="text-center text-gray-400">{settings.address || '[ Address ]'}</p>
               <p className="text-center text-indigo-600 font-bold mt-1 uppercase tracking-widest">{selectedReport?.label}</p>
             </div>
