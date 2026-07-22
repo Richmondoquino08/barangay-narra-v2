@@ -65,9 +65,9 @@ const DEFAULT_LAYOUT = {
   // between groups; boxHeight = visual height of the pre-printed box.
   dateSpacing: { boxWidth: 13, digitGap: 1.5, groupGap: 7, boxHeight: 20 },
   fields: {
-    date:        { top: 18, left: 67, fontSize: 9,  bold: false, label: 'Date' },
+    date:        { top: 21, left: 63, fontSize: 9,  bold: false, label: 'Date' },
     payee:       { top: 34, left: 18, fontSize: 11, bold: true,  label: 'Payee Name' },
-    amountNum:   { top: 32, left: 67, fontSize: 11, bold: true,  label: 'Amount (numbers)' },
+    amountNum:   { top: 34, left: 67, fontSize: 11, bold: true,  label: 'Amount (numbers)' },
     amountWords: { top: 45, left:  9, fontSize: 10, bold: false, label: 'Amount in Words' },
     signer1:     { top: 78, left: 35, fontSize: 8,  bold: true,  label: 'Signatory 1' },
     signer2:     { top: 78, left: 60, fontSize: 8,  bold: true,  label: 'Signatory 2' },
@@ -121,8 +121,6 @@ function ChequePreview({ details, layout, scale = 1 }) {
   // land in the wrong place even when the on-screen preview looked aligned.
   const pt = v => v * scale;
   const ptTrue = v => v * (96 / 72) * scale;
-  const ptToPctW = v => (v / 72 / layout.chequeWidth)  * 100; // pt -> % of cheque width
-  const ptToPctH = v => (v / 72 / layout.chequeHeight) * 100; // pt -> % of cheque height
   const f = layout.fields;
   const dateOffsetsPt = computeDateOffsets(layout.dateSpacing);
 
@@ -214,11 +212,14 @@ function ChequePreview({ details, layout, scale = 1 }) {
         "Member: PDIC"
       </div>
 
-      {/* DATE label + boxes (top right, below divider) */}
-      {/* DATE boxes — pre-printed decoration only (fixed position, no digits here).
-          Positioned with the exact same offsets as the digit overlay below, so
-          the two always line up regardless of dateSpacing tuning. */}
-      <div style={{ position:'absolute', top:'21%', left:`${W*0.63}px` }}>
+      {/* DATE section — label, pre-printed decorative boxes, and the actual
+          printed digits are ONE positioned unit (f.date.top/left). Boxes and
+          digits share the exact same offset math inside it, so they are
+          always pixel-locked to each other no matter how dateSpacing or
+          f.date.top/left get tuned — previously these were two independent
+          coordinate systems that had to be manually reconciled and easily
+          drifted apart (digits floating above/beside their boxes). */}
+      <div style={{ position:'absolute', top:`${f.date.top}%`, left:`${f.date.left}%` }}>
         <div style={pre({ fontSize:pt(7) })}>DATE</div>
         <div style={{ position:'relative', marginTop:pt(2), height:ptTrue(layout.dateSpacing.boxHeight) }}>
           {dateOffsetsPt.map((offsetPt, i) => (
@@ -241,35 +242,28 @@ function ChequePreview({ details, layout, scale = 1 }) {
               }}>/</div>
             );
           })}
+          {/* DATE digits — same offsets as the boxes above, so they always
+              land exactly inside them */}
+          {(() => {
+            const parsed = parseDateForCheque(details.date);
+            if (!parsed) return null;
+            const { mm, dd, yyyy } = parsed;
+            const digits = [mm[0], mm[1], dd[0], dd[1], yyyy[0], yyyy[1], yyyy[2], yyyy[3]];
+            return digits.map((digit, i) => (
+              <div key={i} style={{
+                position:'absolute', left:ptTrue(dateOffsetsPt[i]), top:0,
+                width:ptTrue(layout.dateSpacing.boxWidth), height:ptTrue(layout.dateSpacing.boxHeight),
+                display:'flex', alignItems:'center', justifyContent:'center',
+                fontFamily: MATRIX_FONT,
+                fontSize: ptTrue(f.date.fontSize),
+                fontWeight: '700', color: '#000',
+              }}>
+                {digit}
+              </div>
+            ));
+          })()}
         </div>
       </div>
-
-      {/* DATE digits — positioned via layout fields + dateSpacing so the
-          Layout Editor can move and resize them to match the physical cheque */}
-      {(() => {
-        const parsed = parseDateForCheque(details.date);
-        if (!parsed) return null;
-        const { mm, dd, yyyy } = parsed;
-        const digits = [mm[0], mm[1], dd[0], dd[1], yyyy[0], yyyy[1], yyyy[2], yyyy[3]];
-        return digits.map((digit, i) => {
-          const leftPct = f.date.left + ptToPctW(dateOffsetsPt[i]);
-          return (
-            <div key={i} style={{
-              position:'absolute',
-              top:`${f.date.top}%`,
-              left:`${leftPct}%`,
-              width:`${ptToPctW(layout.dateSpacing.boxWidth)}%`,
-              height:`${ptToPctH(layout.dateSpacing.boxHeight)}%`,
-              display:'flex', alignItems:'center', justifyContent:'center',
-              fontFamily: MATRIX_FONT,
-              fontSize: ptTrue(f.date.fontSize),
-              fontWeight: '700', color: '#000',
-            }}>
-              {digit}
-            </div>
-          );
-        });
-      })()}
 
       {/* ── PAY TO THE ORDER OF section ── */}
       <div style={{ position:'absolute', top:'29%', left:`${pt(20)}px` }}>
@@ -297,8 +291,8 @@ function ChequePreview({ details, layout, scale = 1 }) {
         <div style={{
           border:`${pt(0.8)}px solid ${lgray}`, marginTop:pt(2),
           width:`${W*0.246}px`, // 5cm measured width
-          height:`${H*0.15}px`,
-          background:'#fff',
+          height:`${H*0.07}px`, // was 0.15 — that plus the "P" label above it pushed
+          background:'#fff',   // the box down into PESOS / Amount in words below
         }}/>
       </div>
       {/* Amount number value */}

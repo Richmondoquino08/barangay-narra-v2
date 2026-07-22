@@ -5,6 +5,18 @@ Newest entries first. Each entry lists what changed, why, and which files were t
 
 ---
 
+## 2026-07-22 — Cheque print preview: date digits floating off their boxes, amount box overlapping PESOS
+
+**Why:** After the calibration fix above, a screenshot of the actual preview showed two more real bugs — the typed date digits (e.g. "07222026") rendered floating above and to the side of their pre-printed boxes instead of inside them, and the amount box was tall enough to visually overlap the "PESOS" label and "Amount in words" line below it.
+
+**Date digits floating — root cause:** the pre-printed decorative date boxes and the actual typed digits were two *independent* absolutely-positioned elements (the boxes fixed at `top:21%, left:63%W`; the digits driven separately by `f.date.top/left`, defaulted to `18%/67%`). They were never mathematically tied together — keeping them visually aligned depended on both sets of numbers happening to agree, which they didn't. Fixed by merging them into a single positioned container: the "DATE" label, the pre-printed boxes, and the digits now all live inside one `<div>` positioned by `f.date.top/left`, using the exact same per-digit offsets for both the boxes and the digits. They're now aligned by construction — no combination of tuning values can make them drift apart again. Default position updated to `top:21, left:63` (previously `18/67`) to match where the box row visually sits.
+
+**Amount box overlap — root cause:** the box's height (`chequeHeight × 0.15`, i.e. 15% of the cheque's height) plus the "P" label sitting above it pushed the box down to roughly 33%–48% of the cheque's height, while "PESOS" was fixed at 42% — a real, visible overlap, not something introduced by the sizing fix above (same numbers were already there before today). Reduced the box height to 7% of cheque height (33%–40%), clearing "PESOS" by about 2%. The box's width still reflects the measured 5cm from the earlier fix.
+
+**Files changed:** `frontend/src/pages/ChequePrint.jsx`.
+
+---
+
 ## 2026-07-22 — Cheque print calibration: correct size + a real units bug
 
 **Why:** Reported as "the printed cheque doesn't match the actual cheque," with a photo of the physical Landbank cheque annotated with measurements (8"×3" overall, not the 8.5"×3.5" the system assumed; date box row 4.5cm wide; amount box 5cm wide; two signature boxes 4.5cm wide × 1cm tall with a 0.5cm gap between them).
