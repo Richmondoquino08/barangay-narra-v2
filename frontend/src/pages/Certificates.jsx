@@ -426,7 +426,7 @@ export default function Certificates() {
         office_label:        true,
         custom_header_image: '',
         logo_size:  76,
-        logo_gap:   8,
+        logo_gap:   48,
         text_size:  10.5,
         name_size:  16,
       },

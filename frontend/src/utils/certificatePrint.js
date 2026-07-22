@@ -155,7 +155,7 @@ export function openPrintPreview(config, data, certId) {
   // Header layout — all tunable per-template from the Layout tab (with these
   // as fallback defaults for templates saved before those controls existed).
   const logoSize = config.header.logo_size ?? 76;
-  const logoGap  = config.header.logo_gap  ?? 8;
+  const logoGap  = config.header.logo_gap  ?? 48;
   const textSize = config.header.text_size ?? 10.5;
   const nameSize = config.header.name_size ?? 16;
   const titleSize = config.style?.title_size ?? 14;

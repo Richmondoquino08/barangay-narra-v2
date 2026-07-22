@@ -450,7 +450,7 @@ function CertPreview({ config, sampleData, scale = 0.55 }) {
         {headerImg ? (
           <img src={headerImg} alt="Header" style={{ width:'100%', maxHeight: 100*scale, objectFit:'cover', display:'block' }}/>
         ) : (
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap: (config.header.logo_gap ?? 8)*scale, borderBottom: `${2*scale}px solid ${borderColor}`, paddingBottom: 10*scale, marginBottom: 10*scale }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap: (config.header.logo_gap ?? 48)*scale, borderBottom: `${2*scale}px solid ${borderColor}`, paddingBottom: 10*scale, marginBottom: 10*scale }}>
             {/* No flex:1 on the text block — with it, the block always filled
                 the full row and stayed centered in that space, so lowering
                 Logo Gap barely moved anything visually. Without it, the whole
@@ -847,7 +847,7 @@ export default function CertificateTemplateBuilder({ initial, settings, onSaved,
                   </div>
                   <div>
                     <label className="label">Logo Gap (pt)</label>
-                    <input type="number" min="0" max="60" step="1" className="input" value={config.header.logo_gap ?? 8}
+                    <input type="number" min="0" max="100" step="1" className="input" value={config.header.logo_gap ?? 48}
                       onChange={e => setH('logo_gap', parseFloat(e.target.value) || 0)}/>
                   </div>
                   <div>

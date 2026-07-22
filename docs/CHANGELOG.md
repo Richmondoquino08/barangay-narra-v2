@@ -5,6 +5,16 @@ Newest entries first. Each entry lists what changed, why, and which files were t
 
 ---
 
+## 2026-07-23 — Default Logo Gap changed to 48pt
+
+**Why:** Requested after testing the fixed Logo Gap control (previous entry) — 48pt is the preferred default spacing between each seal and the center text.
+
+**Changed:** default `logo_gap` raised from 8pt to 48pt in the print output, the Template Builder preview, and new-template defaults. Only affects templates that haven't explicitly set their own Logo Gap value (which is now every template, since this is a fallback) — the Layout Editor input's range was also widened (max 60pt → 100pt) to leave room to adjust further.
+
+**Files changed:** `frontend/src/utils/certificatePrint.js`, `frontend/src/pages/CertificateTemplateBuilder.jsx`, `frontend/src/pages/Certificates.jsx`.
+
+---
+
 ## 2026-07-23 — Signature slot is now a line, not a box
 
 **Why:** A signature is conventionally signed *above* a line, not inside a bordered box — only the thumbprint (and a photo) need an actual bounded area. Requested right after the photo/signature/thumbprint tag above shipped.
