@@ -448,22 +448,22 @@ function CertPreview({ config, sampleData, scale = 0.55 }) {
         {headerImg ? (
           <img src={headerImg} alt="Header" style={{ width:'100%', maxHeight: 100*scale, objectFit:'cover', display:'block' }}/>
         ) : (
-          <div style={{ display:'flex', alignItems:'center', gap: 12*scale, borderBottom: `${2*scale}px solid ${borderColor}`, paddingBottom: 10*scale, marginBottom: 10*scale }}>
-            {logoL && <img src={logoL} style={{ width: 64*scale, height: 64*scale, objectFit:'contain', flexShrink: 0 }} alt="L"/>}
+          <div style={{ display:'flex', alignItems:'center', gap: 7*scale, borderBottom: `${2*scale}px solid ${borderColor}`, paddingBottom: 10*scale, marginBottom: 10*scale }}>
+            {logoL && <img src={logoL} style={{ width: 76*scale, height: 76*scale, objectFit:'contain', flexShrink: 0 }} alt="L"/>}
             <div style={{ flex:1, textAlign:'center' }}>
-              {config.header.show_republic !== false && <p style={{ margin:0, fontSize:9*scale, color:'#555' }}>REPUBLIC OF THE PHILIPPINES</p>}
-              {config.header.province && <p style={{ margin:0, fontSize:9*scale, color:'#555' }}>{withLocationPrefix('PROVINCE OF', config.header.province)}</p>}
-              {config.header.city && <p style={{ margin:0, fontSize:9*scale, color:'#555' }}>{withLocationPrefix('CITY OF', config.header.city)}</p>}
-              <p style={{ margin:`${3*scale}px 0 0`, fontSize:13*scale, fontWeight:'bold' }}>{config.header.barangay_name || 'BARANGAY NAME'}</p>
+              {config.header.show_republic !== false && <p style={{ margin:0, fontSize:10.5*scale, color:'#555' }}>REPUBLIC OF THE PHILIPPINES</p>}
+              {config.header.province && <p style={{ margin:0, fontSize:10.5*scale, color:'#555' }}>{withLocationPrefix('PROVINCE OF', config.header.province)}</p>}
+              {config.header.city && <p style={{ margin:0, fontSize:10.5*scale, color:'#555' }}>{withLocationPrefix('CITY OF', config.header.city)}</p>}
+              <p style={{ margin:`${3*scale}px 0 0`, fontSize:15*scale, fontWeight:'bold' }}>{config.header.barangay_name || 'BARANGAY NAME'}</p>
               {config.header.office_label !== false && (
                 <>
                   <div style={{ borderTop:`${1*scale}px solid ${borderColor}`, margin:`${4*scale}px auto`, width:'60%' }}/>
-                  <p style={{ margin:0, fontSize:9*scale }}>OFFICE OF THE PUNONG BARANGAY</p>
+                  <p style={{ margin:0, fontSize:10.5*scale }}>OFFICE OF THE PUNONG BARANGAY</p>
                 </>
               )}
             </div>
-            {logoR && <img src={logoR} style={{ width: 64*scale, height: 64*scale, objectFit:'contain', flexShrink: 0 }} alt="R"/>}
-            {!logoR && logoL && <div style={{ width: 64*scale, flexShrink: 0 }}/>}
+            {logoR && <img src={logoR} style={{ width: 76*scale, height: 76*scale, objectFit:'contain', flexShrink: 0 }} alt="R"/>}
+            {!logoR && logoL && <div style={{ width: 76*scale, flexShrink: 0 }}/>}
           </div>
         )}
 

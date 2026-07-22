@@ -5,6 +5,43 @@ Newest entries first. Each entry lists what changed, why, and which files were t
 
 ---
 
+## 2026-07-23 — Fixed the real cause of "uploaded logo disappears after we push to Debian"
+
+**Why:** Reported as a recurring problem: the barangay/city logos in Settings would vanish after a deployment. Investigated instead of guessing, and found the actual cause — a real, serious bug, not a display issue.
+
+**Root cause:** `.deploy/03_rsync_project.sh` syncs the whole project from this local dev machine to production using `rsync --delete`, which deletes anything on the production server that doesn't also exist locally. Barangay staff upload logos directly through the live Settings page on production — so those files exist **only on the production server**, never on this local machine. Every deploy for *any* unrelated feature was silently deleting them. Confirmed directly: production had two logo files timestamped from earlier this morning, owned by `root` (i.e. re-uploaded after a previous disappearance), that did not exist in the local copy at all — the very next deploy would have deleted them again.
+
+**Fix:** added `--exclude 'backend/uploads'` to the rsync command, so the entire uploads tree (settings images, certificate template images, resident documents, reference docs) is now completely untouched by code deployments in either direction — verified with a dry run showing zero upload files affected.
+
+**Resident photos specifically — checked, not actually at risk:** confirmed resident profile photos are stored as base64 data directly in the `residents.profile_image_url` database column (not as files on disk), so they were never exposed to this bug in the first place — they live in the database, synced through normal Postgres, not through the file-sync deploy. The exclude above still matters for logos, certificate template header images, and anything else that *is* stored as a file.
+
+**Files changed:** `.deploy/03_rsync_project.sh`.
+
+---
+
+## 2026-07-23 — Certificate letterhead: bigger logos, tighter gap, bigger header text
+
+**Why:** Requested visual adjustment based on a screenshot of the printed letterhead — logos too small and too far from the center text, header text (Republic/Province/City/Barangay Name/Office label) too small.
+
+**Changed (both the actual print output and the on-screen Template Builder preview, kept in sync):**
+- Logo size: 64pt → 76pt
+- Gap between each logo and the center text block: 14pt → 8pt (print), 12px → 7px (preview)
+- Republic/Province/City lines: 9pt → 10.5pt
+- Barangay name: 14pt → 16pt (print), 13px → 15px (preview)
+- "Office of the Punong Barangay": 9pt → 10.5pt
+
+**Files changed:** `frontend/src/utils/certificatePrint.js`, `frontend/src/pages/CertificateTemplateBuilder.jsx`.
+
+---
+
+## 2026-07-23 — Resident photo on certificates: already implemented, verified working
+
+**Why:** Asked whether residents could have their uploaded photo appear on certificates. Checked the code before building anything new — this already exists: whenever a resident has a photo on file (`profile_image_url`), certificate printing automatically shows it as a bordered "2x2 PHOTO" box floated in the certificate body, for every certificate type, no per-template toggle needed. `Certificates.jsx`'s `buildPrintData()` already pulls the resident's photo into the print data, and `certificatePrint.js` already renders it.
+
+**Verified:** confirmed a resident with a real uploaded photo has a valid `data:image/jpeg;base64,...` value in `profile_image_url` (48KB), and traced the render path — the photo is embedded directly in the printed HTML as a data URI, so it doesn't depend on any file being reachable (immune to the deploy issue above, and to the earlier CDN/popup issue that used to make the QR code disappear). No code changes needed — if it's not showing for a specific resident, the resident simply doesn't have a photo uploaded on their Residents record yet.
+
+---
+
 ## 2026-07-22 — Cheque preview: all reference lines/boxes now move with their field
 
 **Why:** Following up on the date-box fix above — same idea extended to every other field. Previously only the date boxes moved together with their digits; the payee underline, amount box, "PESOS" underline, and the two signature boxes were all independently fixed positions that a Layout Editor adjustment could leave behind, making the preview inconsistent once anyone actually tuned a field.
