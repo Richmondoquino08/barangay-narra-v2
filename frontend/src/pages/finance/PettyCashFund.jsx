@@ -3,7 +3,7 @@ import { financeFormsAPI } from '../../api/apiClient';
 import { useToast } from '../../components/Toast';
 import Modal from '../../components/Modal';
 import Badge from '../../components/Badge';
-import { Wallet, Plus, Printer, Pencil, Trash2 } from 'lucide-react';
+import { Wallet, Plus, Printer, Pencil, Trash2, CheckCircle2 } from 'lucide-react';
 import { BRGY, peso, fmtDate, printDoc, govHeader } from './financeHelpers';
 
 const EMPTY = { custodian_name:'', date_established:'', fund_amount:'', status:'active', remarks:'' };
@@ -33,6 +33,7 @@ export default function PettyCashFund() {
   async function save(e) {
     e.preventDefault();
     if (!form.custodian_name || !form.fund_amount) { toast('Custodian and fund amount required', 'warning'); return; }
+    if (!editId && Number(form.fund_amount) > 10000) { toast('Fund amount cannot exceed ₱10,000.00', 'warning'); return; }
     setSaving(true);
     try {
       if (editId) { await financeFormsAPI.pcfUpdate(editId, form); toast('Fund updated', 'success'); }
@@ -46,6 +47,15 @@ export default function PettyCashFund() {
     if (!confirm('Delete this fund? Linked vouchers will also be removed.')) return;
     try { await financeFormsAPI.pcfDelete(id); toast('Deleted', 'success'); load(); }
     catch { toast('Delete failed', 'error'); }
+  }
+
+  // Quick one-click close — marks the fund closed without opening the Edit
+  // modal. Petty Cash Voucher only offers "active" funds in its dropdown, so
+  // this immediately drops the fund out of that list on next load there.
+  async function markDone(r) {
+    if (!confirm(`Mark ${r.ref_no} as done/closed? It will no longer be selectable in Petty Cash Voucher.`)) return;
+    try { await financeFormsAPI.pcfUpdate(r.id, { ...r, status: 'closed' }); toast('Fund marked as done', 'success'); load(); }
+    catch { toast('Failed to update status', 'error'); }
   }
 
   function print(r) {
@@ -89,20 +99,22 @@ export default function PettyCashFund() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="bg-gray-50 dark:bg-[#1e2233] border-b border-gray-100 dark:border-[#2e334a]">
-              {['Ref / Custodian','Established','Fund Amount','Balance','Status','Actions'].map(h=><th key={h} className="table-th">{h}</th>)}
+              {['Ref / Custodian','Established','Fund Amount','Balance','Remarks','Status','Actions'].map(h=><th key={h} className="table-th">{h}</th>)}
             </tr></thead>
             <tbody className="divide-y divide-gray-50 dark:divide-[#2e334a]">
-              {loading ? <tr><td colSpan={6} className="py-10 text-center text-gray-400">Loading…</td></tr>
-              : rows.length===0 ? <tr><td colSpan={6} className="py-14 text-center text-gray-400">No petty cash funds</td></tr>
+              {loading ? <tr><td colSpan={7} className="py-10 text-center text-gray-400">Loading…</td></tr>
+              : rows.length===0 ? <tr><td colSpan={7} className="py-14 text-center text-gray-400">No petty cash funds</td></tr>
               : rows.map(r => (
                 <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-[#22263a]">
                   <td className="table-td"><p className="font-medium text-gray-900 dark:text-slate-100">{r.custodian_name}</p><p className="text-[11px] font-mono text-indigo-500">{r.ref_no}</p></td>
                   <td className="table-td text-gray-400 whitespace-nowrap">{fmtDate(r.date_established)}</td>
                   <td className="table-td text-gray-600 dark:text-slate-300">{peso(r.fund_amount)}</td>
                   <td className="table-td font-semibold" style={{color: Number(r.current_balance) < Number(r.fund_amount)*0.25 ? '#ef4444' : 'inherit'}}>{peso(r.current_balance)}</td>
+                  <td className="table-td text-gray-500 dark:text-slate-400 max-w-[180px] truncate" title={r.remarks||''}>{r.remarks || <span className="text-gray-300 dark:text-slate-600">—</span>}</td>
                   <td className="table-td"><Badge status={r.status==='active'?'active':'inactive'}/></td>
                   <td className="table-td">
                     <div className="flex flex-wrap gap-1">
+                      {r.status==='active' && <button onClick={()=>markDone(r)} className="act-btn act-green"><CheckCircle2 size={12}/> Done</button>}
                       <button onClick={()=>print(r)} className="act-btn act-gray"><Printer size={12}/> Print</button>
                       <button onClick={()=>openEdit(r)} className="act-btn act-sky"><Pencil size={12}/> Edit</button>
                       <button onClick={()=>del(r.id)} className="act-btn act-red"><Trash2 size={12}/> Delete</button>
@@ -120,9 +132,11 @@ export default function PettyCashFund() {
           <div><label className={lbl}>Custodian Name *</label><input className={inp} value={form.custodian_name} onChange={e=>set('custodian_name',e.target.value)}/></div>
           <div className="grid grid-cols-2 gap-3">
             <div><label className={lbl}>Date Established</label><input type="date" className={inp} value={form.date_established} onChange={e=>set('date_established',e.target.value)}/></div>
-            <div><label className={lbl}>Fund Amount (₱) *</label><input type="number" step="0.01" className={inp} value={form.fund_amount} onChange={e=>set('fund_amount',e.target.value)} disabled={!!editId}/></div>
+            <div><label className={lbl}>Fund Amount (₱) *</label><input type="number" step="0.01" max={editId?undefined:10000} className={inp} value={form.fund_amount} onChange={e=>set('fund_amount',e.target.value)} disabled={!!editId}/></div>
           </div>
-          {editId && <p className="text-[11px] text-amber-500">Fund amount is fixed after establishment — balance changes automatically via SPPCV vouchers.</p>}
+          {editId
+            ? <p className="text-[11px] text-amber-500">Fund amount is fixed after establishment — balance changes automatically via SPPCV vouchers.</p>
+            : <p className="text-[11px] text-gray-400 dark:text-slate-500">Maximum ₱10,000.00 per fund.</p>}
           <div><label className={lbl}>Status</label>
             <select className={inp} value={form.status} onChange={e=>set('status',e.target.value)}>
               <option value="active">Active</option>

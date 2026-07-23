@@ -177,7 +177,7 @@ export default function PettyCashVoucher() {
             <label className={lbl}>Petty Cash Fund *</label>
             <select className={inp} value={form.pcf_id} onChange={e=>set('pcf_id', e.target.value)}>
               <option value="">— Select Fund —</option>
-              {activeFunds.map(f => <option key={f.id} value={f.id}>{f.ref_no} — {f.custodian_name} (Bal: {peso(f.current_balance)})</option>)}
+              {activeFunds.map(f => <option key={f.id} value={f.id}>{f.ref_no} — {f.custodian_name} (Bal: {peso(f.current_balance)}){f.remarks ? ` · ${f.remarks}` : ''}</option>)}
             </select>
             {selectedFund && <p className="text-[11px] text-gray-400 mt-1">Available balance: {peso(selectedFund.current_balance)}</p>}
           </div>

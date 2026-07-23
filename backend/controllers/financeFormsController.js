@@ -171,9 +171,10 @@ const pcf = {
     try {
       const b = req.body;
       if (!b.custodian_name || !b.fund_amount) return res.status(400).json({ message: 'Custodian and fund amount required' });
-      const ref = await nextRef('petty_cash_funds', 'PCF');
       const amount = Number(b.fund_amount || 0);
-      const [r] = await db.query(
+      if (amount > 10000) return res.status(400).json({ message: 'Fund amount cannot exceed ₱10,000.00' });
+      const ref = await nextRef('petty_cash_funds', 'PCF');
+      const [, r] = await db.query(
         `INSERT INTO petty_cash_funds (ref_no, custodian_name, date_established, fund_amount, current_balance, status, remarks)
          VALUES (?,?,?,?,?,?,?)`,
         [ref, b.custodian_name, b.date_established || new Date(), amount, amount, b.status || 'active', b.remarks || '']
@@ -184,6 +185,10 @@ const pcf = {
   async update(req, res, next) {
     try {
       const b = req.body;
+      // fund_amount isn't editable after establishment (disabled in the
+      // form) — only the 10k cap on creation matters; blocking updates
+      // here would lock out editing status/remarks on any fund that was
+      // established before this limit existed (e.g. the ₱123,213 one).
       await db.query(
         `UPDATE petty_cash_funds SET custodian_name=?, date_established=?, fund_amount=?, status=?, remarks=? WHERE id=?`,
         [b.custodian_name, b.date_established || null, b.fund_amount || 0, b.status || 'active', b.remarks || '', req.params.id]

@@ -5,6 +5,22 @@ Newest entries first. Each entry lists what changed, why, and which files were t
 
 ---
 
+## 2026-07-24 — Petty Cash Fund: ₱10,000 limit, Remarks column, one-click Done
+
+**Why:** Requested improvements to the PCF/SPPCV workflow: cap new funds at a standard imprest limit, surface the remarks that were already being collected but never shown, and make closing out a fund faster.
+
+**Changed:**
+- **₱10,000 limit** on establishing a new fund — enforced both client-side (immediate feedback) and server-side (real validation, not just UI). Only applies to *new* funds; editing an existing fund that predates this limit (e.g. one already at ₱123,213) still works for its other fields, since fund amount is immutable after establishment anyway.
+- **Remarks column** added to the PCF table — the field already existed in the form and database, just wasn't displayed.
+- **Remarks now shown in the Petty Cash Voucher fund dropdown**, alongside the balance.
+- **One-click "Done" button** on each active fund — marks it closed without opening the Edit modal. Petty Cash Voucher's fund dropdown already only lists funds with `status = 'active'`, so marking a fund Done immediately removes it from that list on next load, same as intended.
+
+**Bug found and fixed along the way (same recurring pattern):** `pcf.create` had the `const [r] = await db.query(INSERT...)` destructuring bug — `r.insertId` was always `undefined`, silently dropped from the API response. No visible symptom previously since the frontend just reloads the list after creating a fund rather than reading the id back. Fixed to `const [, r] = ...`. Verified via a live test — response now correctly includes the new fund's id.
+
+**Files changed:** `backend/controllers/financeFormsController.js`, `frontend/src/pages/finance/PettyCashFund.jsx`, `frontend/src/pages/finance/PettyCashVoucher.jsx`.
+
+---
+
 ## 2026-07-23 — Default Logo Gap changed to 48pt
 
 **Why:** Requested after testing the fixed Logo Gap control (previous entry) — 48pt is the preferred default spacing between each seal and the center text.
